@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -35,38 +34,14 @@ var serverAddr_dl string = fmt.Sprintf("%s:%d", SERVER, PORT_DL)
 const PACKET_LEN = 250
 
 func main() {
-
-	keyLogFile := flag.String("keylog", "", "key log file")
-	// insecure := flag.Bool("insecure", false, "skip certificate verification")
-	flag.Parse()
+	nowTime := time.Now()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	for i := 0; i < 2; i++ {
 		go func(i int) { // capture packets in client side
 			if i == 0 {
-				var keyLog io.Writer
-				if len(*keyLogFile) > 0 {
-					f, err := os.Create(*keyLogFile)
-					if err != nil {
-						log.Fatal(err)
-					}
-					defer f.Close()
-					keyLog = f
-				}
-
-				pool, err := x509.SystemCertPool()
-				if err != nil {
-					log.Fatal(err)
-				}
-				testdata.AddRootCA(pool)
-				// set generate configs
-				tlsConfig := &tls.Config{
-					InsecureSkipVerify: true,
-					NextProtos:         []string{"h3"},
-					RootCAs:            pool,
-					KeyLogWriter:       keyLog,
-				}
+				tlsConfig := GenTlsConfig(nowTime, PORT_UL)
 				quicConfig := GenQuicConfig(PORT_UL)
 
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3s handshake timeout
@@ -89,7 +64,7 @@ func main() {
 				session_ul.CloseWithError(0, "ul times up")
 			} else {
 				// set generate configs
-				tlsConfig := GenTlsConfig()
+				tlsConfig := GenTlsConfig(nowTime, PORT_DL)
 				quicConfig := GenQuicConfig(PORT_DL)
 
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3s handshake timeout
@@ -160,12 +135,32 @@ func main() {
 
 }
 
-func GenTlsConfig() *tls.Config {
+func GenTlsConfig(nowTime time.Time, port int) *tls.Config {
+	nowHour := nowTime.Hour()
+	nowMinute := nowTime.Minute()
+	keyLogFile := fmt.Sprintf("../data/tls_key_%02d%02d_%02d.log", nowHour, nowMinute, port)
+
+	var keyLog io.Writer
+	if len(keyLogFile) > 0 {
+		f, err := os.Create(keyLogFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		keyLog = f
+	}
+
+	pool, err := x509.SystemCertPool()
+	if err != nil {
+		log.Fatal(err)
+	}
+	testdata.AddRootCA(pool)
+
 	return &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"h3"},
-		// RootCAs:            pool,
-		// KeyLogWriter:       keyLog,
+		RootCAs:            pool,
+		KeyLogWriter:       keyLog,
 	}
 }
 

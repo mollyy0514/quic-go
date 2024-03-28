@@ -57,7 +57,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 		return
 	}
 	defer timeFile.Close()
-	fmt.Printf("startstart\n")
+
 	for {
 		buf := make([]byte, PACKET_LEN)
 		ts, err := Server_receive(stream, buf)
