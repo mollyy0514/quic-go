@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/quic-go/quic-go/internal/protocol"
@@ -68,7 +69,7 @@ func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Confi
 	} else {
 		ip = net.IPv4zero
 	}
-	
+	fmt.Println("IP: ", ip)
 	// Create a UDP connection and specify the source IP address
 	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: ip, Port: 0})
 	/* ========== ADD INTERFACE SPECIFICATION ========== */

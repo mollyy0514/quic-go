@@ -93,7 +93,6 @@ func HandleQuicStreamDl(stream quic.Stream) {
 		// var message []byte
 		message := Create_packet(uint32(euler), uint32(pi), datetimedec, microsec, uint32(seq))
 		Transmit(stream, message)
-		// time.Sleep(500 * time.Millisecond)
 		seq++
 	}
 	// the last packet to tell client to close the session

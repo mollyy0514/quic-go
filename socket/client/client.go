@@ -20,10 +20,10 @@ import (
 	"github.com/quic-go/quic-go/qlog"
 )
 
-const Server = "127.0.0.1"
+// const Server = "127.0.0.1"
 // const Server = "192.168.1.79" // MacBook Pro M1 local IP
 // const Server = "192.168.1.78" // wmnlab local IP
-// const Server = "140.112.20.183" // 249 public IP
+const Server = "140.112.20.183" // 249 public IP
 const PortUl = 4200
 const PortDL = 4201
 const SleepTime = 500
@@ -46,27 +46,27 @@ func main() {
 	for i := 0; i < 2; i++ {
 		go func(i int) { // capture packets in client side
 			if i == 0 {
-				keyLogFile_ul := fmt.Sprintf("../data/tls_key_%02d%02d_%02d.log", nowHour, nowMinute, PortUl)
-				var keyLog_ul io.Writer
-				if len(keyLogFile_ul) > 0 {
-					f, err := os.Create(keyLogFile_ul)
+				keyLogFileUl := fmt.Sprintf("../data/tls_key_%02d%02d_%02d.log", nowHour, nowMinute, PortUl)
+				var keyLogUl io.Writer
+				if len(keyLogFileUl) > 0 {
+					f, err := os.Create(keyLogFileUl)
 					if err != nil {
 						log.Fatal(err)
 					}
 					defer f.Close()
-					keyLog_ul = f
+					keyLogUl = f
 				}
 
-				pool_ul, err := x509.SystemCertPool()
+				poolUl, err := x509.SystemCertPool()
 				if err != nil {
 					log.Fatal(err)
 				}
-				testdata.AddRootCA(pool_ul)
+				testdata.AddRootCA(poolUl)
 				tlsConfig := &tls.Config{
 					InsecureSkipVerify: true,
 					NextProtos:         []string{"h3"},
-					RootCAs:            pool_ul,
-					KeyLogWriter:       keyLog_ul,
+					RootCAs:            poolUl,
+					KeyLogWriter:       keyLogUl,
 				}
 				// tlsConfig := GenTlsConfig(nowTime, PORT_UL)
 				quicConfig := GenQuicConfig(PortUl)
@@ -270,7 +270,6 @@ func ClientSend(stream quic.Stream) {
 		// var message []byte
 		message := CreatePacket(uint32(euler), uint32(pi), datetimedec, microsec, uint32(seq))
 		SendPacket(stream, message)
-		// time.Sleep(500 * time.Millisecond)
 		seq++
 	}
 }
