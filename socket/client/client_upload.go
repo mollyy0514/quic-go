@@ -31,7 +31,7 @@ var serverAddr_ul string
 const PACKET_LEN = 250
 
 func main() {
-	_host := flag.String("h", "140.112.20.18", "server ip")
+	_host := flag.String("h", "140.112.20.183", "server ip")
 	_port := flag.Int("p", 4200, "server upload port")
 	_file := flag.String("f", "input.txt", "the file name that we need to transfer")
 	_bind := flag.String("b", "", "interface to bind")
