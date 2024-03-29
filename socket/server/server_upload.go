@@ -27,6 +27,8 @@ import (
 var SERVER string
 var PORT_UL int
 var DESTDIR string
+var LOGDIR string
+
 const PACKET_LEN = 250
 
 // We start a server echoing data on the first stream the client opens,
@@ -35,18 +37,20 @@ func main() {
 	_host := flag.String("h", "0.0.0.0", "host")
 	_port := flag.Int("p", 4200, "server upload port")
 	_dest := flag.String("d", "/Users/molly/Desktop/", "where to put the received files")
+	_log := flag.String("ld", "./data/", "where to store the log file")
 	flag.Parse()
 	SERVER = *_host
 	DESTDIR = *_dest
 	PORT_UL = *_port
+	LOGDIR = *_log
 
 	// Check if the directory already exists
-    if _, err := os.Stat(DESTDIR); os.IsNotExist(err) {
-        // Create the directory and its parent directories if they do not exist
-        if err := os.MkdirAll(DESTDIR, 0755); err != nil {
-            print("Directory create error: %v", err)
-        }
-    }
+	if _, err := os.Stat(DESTDIR); os.IsNotExist(err) {
+		// Create the directory and its parent directories if they do not exist
+		if err := os.MkdirAll(DESTDIR, 0755); err != nil {
+			print("Directory create error: %v", err)
+		}
+	}
 
 	fmt.Println("Starting server...")
 
@@ -55,7 +59,6 @@ func main() {
 	defer wg.Done()
 	for i := 0; i < 1; i++ {
 		go EchoQuicServer(SERVER, PORT_UL, true)
-		// go EchoQuicServer(SERVER, PORT_DL, false)
 	}
 	wg.Wait()
 }
@@ -66,7 +69,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 	if err != nil {
 		return
 	}
-	fmt.Printf("Received: %s %d bytes\n", filename, filesize)
+	fmt.Printf("Receiving: %s %d bytes\n", filename, filesize)
 
 	buf, err := WriteFile(DESTDIR + filename)
 	if err != nil {
@@ -76,7 +79,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 	recvByte, err := io.Copy(buf, stream)
 	buf.Flush()
 	if err != nil {
-		log.Printf("write file error: %v\n", err)
+		log.Printf("write file: %v\n", err)
 	}
 	log.Printf("recv %d bytes\n", recvByte)
 
@@ -118,7 +121,7 @@ func EchoQuicServer(host string, quicPort int, ul bool) error {
 			h := currentTime.Hour()
 			n := currentTime.Minute()
 			date := fmt.Sprintf("%02d%02d%02d", y, m, d)
-			filename := fmt.Sprintf("../data/log_%s_%02d%02d_%d_%s.qlog", date, h, n, quicPort, role)
+			filename := fmt.Sprintf("%slog_%s_%02d%02d_%d_%s.qlog", LOGDIR, date, h, n, quicPort, role)
 			f, err := os.Create(filename)
 			if err != nil {
 				fmt.Println("cannot generate qlog file")
@@ -163,7 +166,7 @@ func GenerateTLSConfig(nowTime time.Time, port int) *tls.Config {
 
 	nowHour := nowTime.Hour()
 	nowMinute := nowTime.Minute()
-	keyFilePath := fmt.Sprintf("../data/tls_key_%02d%02d_%02d.log", nowHour, nowMinute, port)
+	keyFilePath := fmt.Sprintf("%stls_key_%02d%02d_%02d.log", LOGDIR, nowHour, nowMinute, port)
 	kl, _ := os.OpenFile(keyFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 
 	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
@@ -177,7 +180,7 @@ func GenerateTLSConfig(nowTime time.Time, port int) *tls.Config {
 	}
 }
 
-func Server_receive_dir(stream quic.Stream, buf []byte) (string) {
+func Server_receive_dir(stream quic.Stream, buf []byte) string {
 	n, err := stream.Read(buf)
 	if err != nil {
 		fmt.Println(err)

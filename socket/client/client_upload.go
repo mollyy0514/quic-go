@@ -27,6 +27,7 @@ import (
 var SERVER string
 var PORT_UL int
 var serverAddr_ul string
+var LOGDIR string
 
 const PACKET_LEN = 250
 
@@ -34,11 +35,13 @@ func main() {
 	_host := flag.String("h", "140.112.20.183", "server ip")
 	_port := flag.Int("p", 4200, "server upload port")
 	_file := flag.String("f", "input.txt", "the file name that we need to transfer")
-	_bind := flag.String("b", "", "interface to bind")
+	_ifname := flag.String("i", "", "interface to bind")
+	_log := flag.String("ld", "./data/", "where to store the log file")
 	flag.Parse()
 	SERVER = *_host
 	PORT_UL = *_port
 	file := *_file
+	LOGDIR = *_log
 	serverAddr_ul = fmt.Sprintf("%s:%d", SERVER, PORT_UL)
 	nowTime := time.Now()
 	nowHour := nowTime.Hour()
@@ -50,7 +53,8 @@ func main() {
 		go func(i int) { // capture packets in client side
 			if i == 0 {
 				// set generate configs
-				keyLogFileUl := fmt.Sprintf("../data/tls_key_%02d%02d_%02d.log", nowHour, nowMinute, PORT_UL)
+				LOGDIR = *_log
+				keyLogFileUl := fmt.Sprintf("%stls_key_%02d%02d_%02d.log", LOGDIR, nowHour, nowMinute, PORT_UL)
 				var keyLogUl io.Writer
 				if len(keyLogFileUl) > 0 {
 					f, err := os.Create(keyLogFileUl)
@@ -77,11 +81,11 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3s handshake timeout
 				defer cancel()
 				// connect to server IP. Session is like the socket of TCP/IP
-				session_ul, err := quic.DialAddr(ctx, serverAddr_ul, tlsConfig, &quicConfig, *_bind)
+				session_ul, err := quic.DialAddr(ctx, serverAddr_ul, tlsConfig, &quicConfig, *_ifname)
 				if err != nil {
 					fmt.Println("err: ", err)
 				}
-				defer session_ul.CloseWithError(quic.ApplicationErrorCode(501), "hi you have an error")
+				// defer session_ul.CloseWithError(quic.ApplicationErrorCode(501), "hi you have an error")
 				// create a stream_ul
 				// context.Background() is similar to a channel, giving QUIC a way to communicate
 				stream_ul, err := session_ul.OpenStreamSync(context.Background())
@@ -93,18 +97,13 @@ func main() {
 				data, name, size := ReadFile(file)
 				Client_send_file(stream_ul, name, size)
 				fmt.Printf("upload %s with %d bytes\n", name, size)
-				// if size > 4096*1024 {
-				// 	fmt.Println("size: ", size)
-				// }
 				sendBytes, err := io.Copy(stream_ul, data)
 				if err != nil {
-					log.Fatalf("write stream error: %v\n", err)
+					log.Printf("write stream: %v\n", err)
 				}
 				fmt.Printf("send %d bytes\n", sendBytes)
 				time.Sleep(time.Second * 1)
-				stream_ul.Close()
 				session_ul.CloseWithError(0, "ul times up")
-				os.Exit(0)
 			}
 		}(i)
 	}
@@ -127,7 +126,7 @@ func GenQuicConfig(port int) quic.Config {
 			h := currentTime.Hour()
 			n := currentTime.Minute()
 			date := fmt.Sprintf("%02d%02d%02d", y, m, d)
-			filename := fmt.Sprintf("../data/log_%s_%02d%02d_%d_%s.qlog", date, h, n, port, role)
+			filename := fmt.Sprintf("%slog_%s_%02d%02d_%d_%s.qlog", LOGDIR, date, h, n, port, role)
 			f, err := os.Create(filename)
 			if err != nil {
 				fmt.Println("cannot generate qlog file")
