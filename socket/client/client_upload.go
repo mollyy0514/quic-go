@@ -31,6 +31,7 @@ package main
 // 	_host := flag.String("h", "127.0.0.1", "server ip")
 // 	_port := flag.Int("p", 4200, "server upload port")
 // 	_file := flag.String("f", "input.txt", "the file name that we need to transfer")
+// 	_bind := flag.String("b", "", "interface to bind")
 // 	flag.Parse()
 // 	SERVER = *_host
 // 	PORT_UL = *_port
@@ -49,7 +50,7 @@ package main
 // 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3s handshake timeout
 // 				defer cancel()
 // 				// connect to server IP. Session is like the socket of TCP/IP
-// 				session_ul, err := quic.DialAddr(ctx, serverAddr_ul, tlsConfig, &quicConfig)
+// 				session_ul, err := quic.DialAddr(ctx, serverAddr_ul, tlsConfig, &quicConfig, *_bind)
 // 				if err != nil {
 // 					fmt.Println("err: ", err)
 // 				}

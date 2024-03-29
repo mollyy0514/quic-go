@@ -20,11 +20,11 @@ import (
 )
 
 // const bufferMaxSize = 1048576 // 1mb
-const PACKET_LEN = 250
-const SERVER = "0.0.0.0"
-const PORT_UL = 4200
-const PORT_DL = 4201
-const SLEEPTIME = 2
+const PacketLen = 250
+const Server = "0.0.0.0"
+const PortUl = 4200
+const PortDl = 4201
+const SleepTime = 500
 
 // We start a server echoing data on the first stream the client opens,
 // then connect with a client, send the message, and wait for its receipt.
@@ -35,13 +35,13 @@ func main() {
 	wg.Add(2)
 	defer wg.Done()
 	for i := 0; i < 2; i++ {
-		go EchoQuicServer(SERVER, PORT_UL, true)
-		go EchoQuicServer(SERVER, PORT_DL, false)
+		go EchoQuicServer(Server, PortUl, true)
+		go EchoQuicServer(Server, PortDl, false)
 	}
 	wg.Wait()
 }
 
-func HandleQuicStream_ul(stream quic.Stream) {
+func HandleQuicStreamUl(stream quic.Stream) {
 	// Open or create a file to store the floats in JSON format
 	currentTime := time.Now()
 	y := currentTime.Year()
@@ -50,7 +50,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 	h := currentTime.Hour()
 	n := currentTime.Minute()
 	date := fmt.Sprintf("%02d%02d%02d", y, m, d)
-	filepath := fmt.Sprintf("../data/time_%s_%02d%02d_%d.txt", date, h, n, PORT_UL)
+	filepath := fmt.Sprintf("../data/time_%s_%02d%02d_%d.txt", date, h, n, PortUl)
 	timeFile, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -59,7 +59,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 	defer timeFile.Close()
 
 	for {
-		buf := make([]byte, PACKET_LEN)
+		buf := make([]byte, PacketLen)
 		ts, err := Server_receive(stream, buf)
 		if err != nil {
 			return
@@ -75,16 +75,16 @@ func HandleQuicStream_ul(stream quic.Stream) {
 	}
 }
 
-func HandleQuicStream_dl(stream quic.Stream) {
+func HandleQuicStreamDl(stream quic.Stream) {
 	duration := 5 * time.Second
 	seq := 1
-	start_time := time.Now()
+	startTime := time.Now()
 	euler := 271828
 	pi := 31415926
-	next_transmission_time := start_time.UnixMilli()
-	for time.Since(start_time) <= time.Duration(duration) {
-		for time.Now().UnixMilli() < next_transmission_time {}
-		next_transmission_time += SLEEPTIME
+	nextTransmissionTime := startTime.UnixMilli()
+	for time.Since(startTime) <= time.Duration(duration) {
+		for time.Now().UnixMilli() < nextTransmissionTime {}
+		nextTransmissionTime += SleepTime
 		t := time.Now().UnixNano() // Time in milliseconds
 		fmt.Println("server sent:", t)
 		datetimedec := uint32(t / 1e9) // Extract seconds from milliseconds
@@ -93,7 +93,7 @@ func HandleQuicStream_dl(stream quic.Stream) {
 		// var message []byte
 		message := Create_packet(uint32(euler), uint32(pi), datetimedec, microsec, uint32(seq))
 		Transmit(stream, message)
-		time.Sleep(500 * time.Millisecond)
+		// time.Sleep(500 * time.Millisecond)
 		seq++
 	}
 	// the last packet to tell client to close the session
@@ -110,9 +110,9 @@ func HandleQuicSession(sess quic.Connection, ul bool) {
 			return // Using panic here will terminate the program if a new connection has not come in in a while, such as transmitting large file.
 		}
 		if ul {
-			go HandleQuicStream_ul(stream)
+			go HandleQuicStreamUl(stream)
 		} else {
-			go HandleQuicStream_dl(stream)
+			go HandleQuicStreamDl(stream)
 		}
 	}
 }
@@ -222,8 +222,8 @@ func Create_packet(euler uint32, pi uint32, datetimedec uint32, microsec uint32,
 
 	// add random additional data to 250 bytes
 	msgLength := len(message)
-	if msgLength < PACKET_LEN {
-		randomBytes := make([]byte, PACKET_LEN-msgLength)
+	if msgLength < PacketLen {
+		randomBytes := make([]byte, PacketLen-msgLength)
 		rand.Read(randomBytes)
 		message = append(message, randomBytes...)
 	}
