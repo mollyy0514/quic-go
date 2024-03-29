@@ -57,7 +57,7 @@ func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Confi
 			return nil, err
 		}
 		addrs, _ := iface.Addrs()
-		
+
 		for _, addr := range addrs {
 			switch v := addr.(type) {
 			case *net.IPNet:
@@ -69,9 +69,9 @@ func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Confi
 	} else {
 		ip = net.IPv4zero
 	}
-	fmt.Println("IP: ", ip)
+	fmt.Println("IP:", ip)
 	// Create a UDP connection and specify the source IP address
-	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: ip, Port: 0})
+	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: ip.To4(), Port: 0})
 	/* ========== ADD INTERFACE SPECIFICATION ========== */
 	// udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
