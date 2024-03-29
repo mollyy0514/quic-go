@@ -3,7 +3,7 @@ package quic
 import (
 	"errors"
 
-	"github.com/quic-go/quic-go/internal/protocol"
+	"github.com/mollyy0514/quic-go/internal/protocol"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

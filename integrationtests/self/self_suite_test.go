@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/integrationtests/tools"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/internal/wire"
-	"github.com/quic-go/quic-go/logging"
+	"github.com/mollyy0514/quic-go"
+	"github.com/mollyy0514/quic-go/integrationtests/tools"
+	"github.com/mollyy0514/quic-go/internal/protocol"
+	"github.com/mollyy0514/quic-go/internal/utils"
+	"github.com/mollyy0514/quic-go/internal/wire"
+	"github.com/mollyy0514/quic-go/logging"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

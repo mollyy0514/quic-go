@@ -18,9 +18,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
-	quicproxy "github.com/quic-go/quic-go/integrationtests/tools/proxy"
+	"github.com/mollyy0514/quic-go"
+	"github.com/mollyy0514/quic-go/http3"
+	quicproxy "github.com/mollyy0514/quic-go/integrationtests/tools/proxy"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

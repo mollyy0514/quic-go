@@ -14,9 +14,9 @@ package main
 // 	"fmt"
 // 	"log"
 // 	"math/big"
-// 	"github.com/quic-go/quic-go"
-// 	"github.com/quic-go/quic-go/logging"
-// 	"github.com/quic-go/quic-go/qlog"
+// 	"github.com/mollyy0514/quic-go"
+// 	"github.com/mollyy0514/quic-go/logging"
+// 	"github.com/mollyy0514/quic-go/qlog"
 // )
 
 // // const bufferMaxSize = 1048576 // 1mb

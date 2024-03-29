@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/quicvarint"
+	"github.com/mollyy0514/quic-go/internal/protocol"
+	"github.com/mollyy0514/quic-go/quicvarint"
 )
 
 // MaxDatagramSize is the maximum size of a DATAGRAM frame (RFC 9221).

@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	quicproxy "github.com/quic-go/quic-go/integrationtests/tools/proxy"
-	"github.com/quic-go/quic-go/internal/wire"
-	"github.com/quic-go/quic-go/quicvarint"
+	"github.com/mollyy0514/quic-go"
+	quicproxy "github.com/mollyy0514/quic-go/integrationtests/tools/proxy"
+	"github.com/mollyy0514/quic-go/internal/wire"
+	"github.com/mollyy0514/quic-go/quicvarint"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

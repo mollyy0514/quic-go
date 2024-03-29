@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/internal/testdata"
-	"github.com/quic-go/quic-go/logging"
-	"github.com/quic-go/quic-go/qlog"
+	"github.com/mollyy0514/quic-go"
+	"github.com/mollyy0514/quic-go/internal/testdata"
+	"github.com/mollyy0514/quic-go/logging"
+	"github.com/mollyy0514/quic-go/qlog"
 )
 
 // var SERVER = "127.0.0.1"
