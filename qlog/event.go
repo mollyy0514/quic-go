@@ -300,7 +300,7 @@ type eventMetricsUpdated struct {
 }
 
 func (e eventMetricsUpdated) Category() category { return categoryRecovery }
-func (e eventMetricsUpdated) Name() string       { return "metrics" }
+func (e eventMetricsUpdated) Name() string       { return "mtrc_upd" }
 func (e eventMetricsUpdated) IsNil() bool        { return false }
 
 func (e eventMetricsUpdated) MarshalJSONObject(enc *gojay.Encoder) {
@@ -321,10 +321,10 @@ func (e eventMetricsUpdated) MarshalJSONObject(enc *gojay.Encoder) {
 		enc.Uint64Key("cwnd", uint64(e.Current.CongestionWindow))
 	}
 	if e.Last == nil || e.Last.BytesInFlight != e.Current.BytesInFlight {
-		enc.Uint64Key("bytes_in_flight", uint64(e.Current.BytesInFlight))
+		enc.Uint64Key("bb_in_flt", uint64(e.Current.BytesInFlight))
 	}
 	if e.Last == nil || e.Last.PacketsInFlight != e.Current.PacketsInFlight {
-		enc.Uint64KeyOmitEmpty("packets_in_flight", uint64(e.Current.PacketsInFlight))
+		enc.Uint64KeyOmitEmpty("p_in_flt", uint64(e.Current.PacketsInFlight))
 	}
 }
 
@@ -333,7 +333,7 @@ type eventUpdatedPTO struct {
 }
 
 func (e eventUpdatedPTO) Category() category { return categoryRecovery }
-func (e eventUpdatedPTO) Name() string       { return "metrics" }
+func (e eventUpdatedPTO) Name() string       { return "mtrc_upd" }
 func (e eventUpdatedPTO) IsNil() bool        { return false }
 
 func (e eventUpdatedPTO) MarshalJSONObject(enc *gojay.Encoder) {
@@ -366,14 +366,14 @@ type eventKeyUpdated struct {
 }
 
 func (e eventKeyUpdated) Category() category { return categorySecurity }
-func (e eventKeyUpdated) Name() string       { return "key_updated" }
+func (e eventKeyUpdated) Name() string       { return "k_upd" }
 func (e eventKeyUpdated) IsNil() bool        { return false }
 
 func (e eventKeyUpdated) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("trigger", e.Trigger.String())
-	enc.StringKey("key_type", e.KeyType.String())
+	enc.StringKey("k_t", e.KeyType.String())
 	if e.KeyType == keyTypeClient1RTT || e.KeyType == keyTypeServer1RTT {
-		enc.Uint64Key("key_phase", uint64(e.KeyPhase))
+		enc.Uint64Key("k_ph", uint64(e.KeyPhase))
 	}
 }
 
@@ -383,16 +383,16 @@ type eventKeyDiscarded struct {
 }
 
 func (e eventKeyDiscarded) Category() category { return categorySecurity }
-func (e eventKeyDiscarded) Name() string       { return "key_discarded" }
+func (e eventKeyDiscarded) Name() string       { return "k_discarded" }
 func (e eventKeyDiscarded) IsNil() bool        { return false }
 
 func (e eventKeyDiscarded) MarshalJSONObject(enc *gojay.Encoder) {
 	if e.KeyType != keyTypeClient1RTT && e.KeyType != keyTypeServer1RTT {
 		enc.StringKey("trigger", "tls")
 	}
-	enc.StringKey("key_type", e.KeyType.String())
+	enc.StringKey("k_t", e.KeyType.String())
 	if e.KeyType == keyTypeClient1RTT || e.KeyType == keyTypeServer1RTT {
-		enc.Uint64Key("key_phase", uint64(e.KeyPhase))
+		enc.Uint64Key("k_ph", uint64(e.KeyPhase))
 	}
 }
 
@@ -495,7 +495,7 @@ type eventLossTimerSet struct {
 }
 
 func (e eventLossTimerSet) Category() category { return categoryRecovery }
-func (e eventLossTimerSet) Name() string       { return "loss_timer_updated" }
+func (e eventLossTimerSet) Name() string       { return "loss_tmr_upd" }
 func (e eventLossTimerSet) IsNil() bool        { return false }
 
 func (e eventLossTimerSet) MarshalJSONObject(enc *gojay.Encoder) {
@@ -511,7 +511,7 @@ type eventLossTimerExpired struct {
 }
 
 func (e eventLossTimerExpired) Category() category { return categoryRecovery }
-func (e eventLossTimerExpired) Name() string       { return "loss_timer_updated" }
+func (e eventLossTimerExpired) Name() string       { return "loss_tmr_upd" }
 func (e eventLossTimerExpired) IsNil() bool        { return false }
 
 func (e eventLossTimerExpired) MarshalJSONObject(enc *gojay.Encoder) {
@@ -523,7 +523,7 @@ func (e eventLossTimerExpired) MarshalJSONObject(enc *gojay.Encoder) {
 type eventLossTimerCanceled struct{}
 
 func (e eventLossTimerCanceled) Category() category { return categoryRecovery }
-func (e eventLossTimerCanceled) Name() string       { return "loss_timer_updated" }
+func (e eventLossTimerCanceled) Name() string       { return "loss_tmr_upd" }
 func (e eventLossTimerCanceled) IsNil() bool        { return false }
 
 func (e eventLossTimerCanceled) MarshalJSONObject(enc *gojay.Encoder) {

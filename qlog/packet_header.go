@@ -89,7 +89,7 @@ func (h packetHeader) MarshalJSONObject(enc *gojay.Encoder) {
 		enc.StringKey("dcid", h.DestConnectionID.String())
 	}
 	if h.KeyPhaseBit == logging.KeyPhaseZero || h.KeyPhaseBit == logging.KeyPhaseOne {
-		enc.StringKey("key_phase_bit", h.KeyPhaseBit.String())
+		enc.StringKey("k_ph_b", h.KeyPhaseBit.String())
 	}
 	if h.Token != nil {
 		enc.ObjectKey("token", h.Token)
@@ -157,5 +157,5 @@ func (h shortHeader) MarshalJSONObject(enc *gojay.Encoder) {
 		enc.StringKey("dcid", h.DestConnectionID.String())
 	}
 	enc.Int64Key("p_n", int64(h.PacketNumber))
-	enc.StringKey("key_phase_bit", h.KeyPhaseBit.String())
+	enc.StringKey("k_ph_b", h.KeyPhaseBit.String())
 }
