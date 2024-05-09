@@ -71,7 +71,7 @@ func transformLongHeader(hdr *logging.ExtendedHeader) *packetHeader {
 }
 
 func (h packetHeader) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("packet_type", packetType(h.PacketType).String())
+	enc.StringKey("p_t", packetType(h.PacketType).String())
 	if h.PacketType != logging.PacketTypeRetry {
 		enc.Int64Key("p_n", int64(h.PacketNumber))
 	}
@@ -103,7 +103,7 @@ type packetHeaderVersionNegotiation struct {
 
 func (h packetHeaderVersionNegotiation) IsNil() bool { return false }
 func (h packetHeaderVersionNegotiation) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("packet_type", "version_negotiation")
+	enc.StringKey("p_t", "version_negotiation")
 	enc.IntKey("scil", h.SrcConnectionID.Len())
 	enc.StringKey("scid", h.SrcConnectionID.String())
 	enc.IntKey("dcil", h.DestConnectionID.Len())
@@ -118,7 +118,7 @@ type packetHeaderWithType struct {
 
 func (h packetHeaderWithType) IsNil() bool { return false }
 func (h packetHeaderWithType) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("packet_type", packetType(h.PacketType).String())
+	enc.StringKey("p_t", packetType(h.PacketType).String())
 	if h.PacketNumber != protocol.InvalidPacketNumber {
 		enc.Int64Key("p_n", int64(h.PacketNumber))
 	}
@@ -132,7 +132,7 @@ type packetHeaderWithTypeAndPacketNumber struct {
 
 func (h packetHeaderWithTypeAndPacketNumber) IsNil() bool { return false }
 func (h packetHeaderWithTypeAndPacketNumber) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("packet_type", packetType(h.PacketType).String())
+	enc.StringKey("p_t", packetType(h.PacketType).String())
 	enc.Int64Key("p_n", int64(h.PacketNumber))
 }
 
@@ -152,7 +152,7 @@ func transformShortHeader(hdr *logging.ShortHeader) *shortHeader {
 
 func (h shortHeader) IsNil() bool { return false }
 func (h shortHeader) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("packet_type", packetType(logging.PacketType1RTT).String())
+	enc.StringKey("p_t", packetType(logging.PacketType1RTT).String())
 	if h.DestConnectionID.Len() > 0 {
 		enc.StringKey("dcid", h.DestConnectionID.String())
 	}
