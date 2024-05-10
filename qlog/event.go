@@ -305,13 +305,13 @@ func (e eventMetricsUpdated) IsNil() bool        { return false }
 
 func (e eventMetricsUpdated) MarshalJSONObject(enc *gojay.Encoder) {
 	if e.Last == nil || e.Last.MinRTT != e.Current.MinRTT {
-		enc.FloatKey("min_rtt", milliseconds(e.Current.MinRTT))
+		enc.FloatKey("mrtt", milliseconds(e.Current.MinRTT))
 	}
 	if e.Last == nil || e.Last.SmoothedRTT != e.Current.SmoothedRTT {
-		enc.FloatKey("s_rtt", milliseconds(e.Current.SmoothedRTT))
+		enc.FloatKey("srtt", milliseconds(e.Current.SmoothedRTT))
 	}
 	if e.Last == nil || e.Last.LatestRTT != e.Current.LatestRTT {
-		enc.FloatKey("l_rtt", milliseconds(e.Current.LatestRTT))
+		enc.FloatKey("lrtt", milliseconds(e.Current.LatestRTT))
 	}
 	if e.Last == nil || e.Last.RTTVariance != e.Current.RTTVariance {
 		enc.FloatKey("rtt_var", milliseconds(e.Current.RTTVariance))
@@ -337,7 +337,7 @@ func (e eventUpdatedPTO) Name() string       { return "mtrc_upd" }
 func (e eventUpdatedPTO) IsNil() bool        { return false }
 
 func (e eventUpdatedPTO) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.Uint32Key("pto_count", e.Value)
+	enc.Uint32Key("pto_cnt", e.Value)
 }
 
 type eventPacketLost struct {
@@ -501,7 +501,7 @@ func (e eventLossTimerSet) IsNil() bool        { return false }
 func (e eventLossTimerSet) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("event_type", "set")
 	enc.StringKey("timer_type", e.TimerType.String())
-	enc.StringKey("p_n_space", encLevelToPacketNumberSpace(e.EncLevel))
+	enc.StringKey("pn_space", encLevelToPacketNumberSpace(e.EncLevel))
 	enc.Float64Key("delta", milliseconds(e.Delta))
 }
 
@@ -517,7 +517,7 @@ func (e eventLossTimerExpired) IsNil() bool        { return false }
 func (e eventLossTimerExpired) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("event_type", "expired")
 	enc.StringKey("timer_type", e.TimerType.String())
-	enc.StringKey("p_n_space", encLevelToPacketNumberSpace(e.EncLevel))
+	enc.StringKey("pn_space", encLevelToPacketNumberSpace(e.EncLevel))
 }
 
 type eventLossTimerCanceled struct{}

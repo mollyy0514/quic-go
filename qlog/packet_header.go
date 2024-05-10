@@ -73,7 +73,7 @@ func transformLongHeader(hdr *logging.ExtendedHeader) *packetHeader {
 func (h packetHeader) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("p_t", packetType(h.PacketType).String())
 	if h.PacketType != logging.PacketTypeRetry {
-		enc.Int64Key("p_n", int64(h.PacketNumber))
+		enc.Int64Key("pn", int64(h.PacketNumber))
 	}
 	if h.Version != 0 {
 		enc.StringKey("version", versionNumber(h.Version).String())
@@ -120,7 +120,7 @@ func (h packetHeaderWithType) IsNil() bool { return false }
 func (h packetHeaderWithType) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("p_t", packetType(h.PacketType).String())
 	if h.PacketNumber != protocol.InvalidPacketNumber {
-		enc.Int64Key("p_n", int64(h.PacketNumber))
+		enc.Int64Key("pn", int64(h.PacketNumber))
 	}
 }
 
@@ -133,7 +133,7 @@ type packetHeaderWithTypeAndPacketNumber struct {
 func (h packetHeaderWithTypeAndPacketNumber) IsNil() bool { return false }
 func (h packetHeaderWithTypeAndPacketNumber) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("p_t", packetType(h.PacketType).String())
-	enc.Int64Key("p_n", int64(h.PacketNumber))
+	enc.Int64Key("pn", int64(h.PacketNumber))
 }
 
 type shortHeader struct {
@@ -156,6 +156,6 @@ func (h shortHeader) MarshalJSONObject(enc *gojay.Encoder) {
 	if h.DestConnectionID.Len() > 0 {
 		enc.StringKey("dcid", h.DestConnectionID.String())
 	}
-	enc.Int64Key("p_n", int64(h.PacketNumber))
+	enc.Int64Key("pn", int64(h.PacketNumber))
 	enc.StringKey("k_ph_b", h.KeyPhaseBit.String())
 }
