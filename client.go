@@ -47,7 +47,23 @@ var generateConnectionIDForInitial = protocol.GenerateConnectionIDForInitial
 // It resolves the address, and then creates a new UDP connection to dial the QUIC server.
 // When the QUIC connection is closed, this UDP connection is closed.
 // See Dial for more details.
-func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Config, ifaceName string) (Connection, error) {
+func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Config) (Connection, error) {
+	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		return nil, err
+	}
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	tr, err := setupTransport(udpConn, tlsConf, true)
+	if err != nil {
+		return nil, err
+	}
+	return tr.dial(ctx, udpAddr, addr, tlsConf, conf, false)
+}
+
+func DialAddrIface(ctx context.Context, addr string, tlsConf *tls.Config, conf *Config, ifaceName string) (Connection, error) {
 	/* ========== ADD INTERFACE SPECIFICATION ========== */
 	var ip net.IP
 	if ifaceName != "" {
