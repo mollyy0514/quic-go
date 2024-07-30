@@ -5,6 +5,7 @@ import "github.com/mollyy0514/quic-go/internal/wire"
 type (
 	Frame                   = wire.Frame
 	AckFrame                = wire.AckFrame
+	FeedbackFrame			= wire.FeedbackFrame
 	ConnectionCloseFrame    = wire.ConnectionCloseFrame
 	CryptoFrame             = wire.CryptoFrame
 	DataBlockedFrame        = wire.DataBlockedFrame

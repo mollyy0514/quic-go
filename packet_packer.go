@@ -559,7 +559,12 @@ func (p *packetPacker) maybeGetShortHeaderPacket(sealer handshake.ShortHeaderSea
 }
 
 func (p *packetPacker) maybeGetAppDataPacket(maxPayloadSize protocol.ByteCount, onlyAck, ackAllowed bool, v protocol.Version) payload {
-	pl := p.composeNextPacket(maxPayloadSize, onlyAck, ackAllowed, v)
+	var pl payload
+	if ackAllowed || onlyAck {
+		pl = p.composeNextPacketWithFeedbackFrame(maxPayloadSize, onlyAck, ackAllowed, v)
+	} else {
+		pl = p.composeNextPacket(maxPayloadSize, onlyAck, ackAllowed, v)
+	}
 
 	// check if we have anything to send
 	if len(pl.frames) == 0 && len(pl.streamFrames) == 0 {
@@ -577,6 +582,96 @@ func (p *packetPacker) maybeGetAppDataPacket(maxPayloadSize protocol.ByteCount, 
 		}
 	} else {
 		p.numNonAckElicitingAcks = 0
+	}
+	return pl
+}
+
+// TODO: composeNextPacketWithFeedbackFrame with real feedback information
+func (p *packetPacker) composeNextPacketWithFeedbackFrame(maxFrameSize protocol.ByteCount, onlyAck, ackAllowed bool, v protocol.Version) payload {
+	if onlyAck {
+		if ack := p.acks.GetAckFrame(protocol.Encryption1RTT, true); ack != nil {
+			pl := payload{ack: ack, length: ack.Length(v)}
+			feedback := &wire.FeedbackFrame{Feedback: 10000}
+			// fmt.Println("ADDING FEEDBACK FRAME", feedback)
+			pl.frames = append(pl.frames, ackhandler.Frame{Frame: feedback})
+			pl.length += feedback.Length(v)
+			return pl
+		}
+		return payload{}
+	}
+
+	hasData := p.framer.HasData()
+	hasRetransmission := p.retransmissionQueue.HasAppData()
+
+	var hasAck bool
+	var pl payload
+	if ackAllowed {
+		if ack := p.acks.GetAckFrame(protocol.Encryption1RTT, !hasRetransmission && !hasData); ack != nil {
+			pl.ack = ack
+			pl.length += ack.Length(v)
+			hasAck = true
+			
+			feedback := &wire.FeedbackFrame{Feedback: 10000}
+			// fmt.Println("ADDING FEEDBACK FRAME", feedback)
+			pl.frames = append(pl.frames, ackhandler.Frame{Frame: feedback})
+			pl.length += feedback.Length(v)
+		}
+	}
+
+	if p.datagramQueue != nil {
+		if f := p.datagramQueue.Peek(); f != nil {
+			size := f.Length(v)
+			if size <= maxFrameSize-pl.length { // DATAGRAM frame fits
+				pl.frames = append(pl.frames, ackhandler.Frame{Frame: f})
+				pl.length += size
+				p.datagramQueue.Pop()
+			} else if !hasAck {
+				// The DATAGRAM frame doesn't fit, and the packet doesn't contain an ACK.
+				// Discard this frame. There's no point in retrying this in the next packet,
+				// as it's unlikely that the available packet size will increase.
+				p.datagramQueue.Pop()
+			}
+			// If the DATAGRAM frame was too large and the packet contained an ACK, we'll try to send it out later.
+		}
+	}
+
+	if hasAck && !hasData && !hasRetransmission {
+		return pl
+	}
+
+	if hasRetransmission {
+		for {
+			remainingLen := maxFrameSize - pl.length
+			if remainingLen < protocol.MinStreamFrameSize {
+				break
+			}
+			f := p.retransmissionQueue.GetAppDataFrame(remainingLen, v)
+			if f == nil {
+				break
+			}
+			pl.frames = append(pl.frames, ackhandler.Frame{Frame: f, Handler: p.retransmissionQueue.AppDataAckHandler()})
+			pl.length += f.Length(v)
+		}
+	}
+
+	if hasData {
+		var lengthAdded protocol.ByteCount
+		startLen := len(pl.frames)
+		pl.frames, lengthAdded = p.framer.AppendControlFrames(pl.frames, maxFrameSize-pl.length, v)
+		pl.length += lengthAdded
+		// add handlers for the control frames that were added
+		for i := startLen; i < len(pl.frames); i++ {
+			switch pl.frames[i].Frame.(type) {
+			case *wire.PathChallengeFrame, *wire.PathResponseFrame:
+				// Path probing is currently not supported, therefore we don't need to set the OnAcked callback yet.
+				// PATH_CHALLENGE and PATH_RESPONSE are never retransmitted.
+			default:
+				pl.frames[i].Handler = p.retransmissionQueue.AppDataAckHandler()
+			}
+		}
+
+		pl.streamFrames, lengthAdded = p.framer.AppendStreamFrames(pl.streamFrames, maxFrameSize-pl.length, v)
+		pl.length += lengthAdded
 	}
 	return pl
 }

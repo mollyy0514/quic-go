@@ -15,6 +15,10 @@ func ConvertFrame(frame wire.Frame) logging.Frame {
 		// We use a pool for ACK frames.
 		// Implementations of the tracer interface may hold on to frames, so we need to make a copy here.
 		return ConvertAckFrame(f)
+	case *wire.FeedbackFrame:
+		return &logging.FeedbackFrame{
+			Feedback: f.Feedback,
+		}
 	case *wire.CryptoFrame:
 		return &logging.CryptoFrame{
 			Offset: f.Offset,

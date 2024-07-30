@@ -23,6 +23,8 @@ func (f frame) MarshalJSONObject(enc *gojay.Encoder) {
 		marshalPingFrame(enc, frame)
 	case *logging.AckFrame:
 		marshalAckFrame(enc, frame)
+	case *logging.FeedbackFrame:
+		marshalFeedbackFrame(enc, frame)
 	case *logging.ResetStreamFrame:
 		marshalResetStreamFrame(enc, frame)
 	case *logging.StopSendingFrame:
@@ -60,7 +62,7 @@ func (f frame) MarshalJSONObject(enc *gojay.Encoder) {
 	case *logging.DatagramFrame:
 		marshalDatagramFrame(enc, frame)
 	default:
-		panic("unknown frame type")
+		panic("THIS IS unknown frame type")
 	}
 }
 
@@ -109,6 +111,12 @@ func marshalAckFrame(enc *gojay.Encoder, f *logging.AckFrame) {
 		enc.Uint64Key("ect1", f.ECT1)
 		enc.Uint64Key("ce", f.ECNCE)
 	}
+}
+
+// TODO: marshalFeedbackFrame function
+func marshalFeedbackFrame(enc *gojay.Encoder, f *logging.FeedbackFrame) {
+	enc.StringKey("fr_t", "feedback")
+	enc.Int64Key("feedback", int64(f.Feedback))
 }
 
 func marshalResetStreamFrame(enc *gojay.Encoder, f *logging.ResetStreamFrame) {

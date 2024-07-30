@@ -12,6 +12,8 @@ type AckRange = wire.AckRange
 type (
 	// An AckFrame is an ACK frame.
 	AckFrame = wire.AckFrame
+	// An FeedbackFrame is set when ACK frame is scheduled, and it is now a random number for simplicity.
+	FeedbackFrame = wire.FeedbackFrame
 	// A ConnectionCloseFrame is a CONNECTION_CLOSE frame.
 	ConnectionCloseFrame = wire.ConnectionCloseFrame
 	// A DataBlockedFrame is a DATA_BLOCKED frame.
