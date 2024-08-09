@@ -55,6 +55,14 @@ func (h *sentPacketHistory) SentAckElicitingPacket(p *packet) {
 	}
 }
 
+func (h *sentPacketHistory) GetPacket(p protocol.PacketNumber) *packet {
+	el := h.packets[p]
+	if el != nil {
+		return el
+	}
+	return nil
+}
+
 // Iterate iterates through all packets.
 func (h *sentPacketHistory) Iterate(cb func(*packet) (cont bool, err error)) error {
 	for _, p := range h.packets {

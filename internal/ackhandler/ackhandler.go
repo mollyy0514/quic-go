@@ -22,3 +22,17 @@ func NewAckHandler(
 	sph := newSentPacketHandler(initialPacketNumber, initialMaxDatagramSize, rttStats, clientAddressValidated, enableECN, pers, tracer, logger)
 	return sph, newReceivedPacketHandler(sph, logger)
 }
+
+// func NewBbrAckHandler(
+// 	initialPacketNumber protocol.PacketNumber,
+// 	initialMaxDatagramSize protocol.ByteCount,
+// 	rttStats *utils.RTTStats,
+// 	clientAddressValidated bool,
+// 	enableECN bool,
+// 	pers protocol.Perspective,
+// 	tracer *logging.ConnectionTracer,
+// 	logger utils.Logger,
+// ) (SentPacketHandler, ReceivedPacketHandler) {
+// 	sph := NewBbrSentPacketHandler(initialPacketNumber, rttStats, pers, tracer, logger)
+// 	return sph, newReceivedPacketHandler(sph, logger)
+// }

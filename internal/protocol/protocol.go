@@ -150,3 +150,7 @@ const InvalidPacketLimitAES = 1 << 52
 
 // InvalidPacketLimitChaCha is the maximum number of packets that we can fail to decrypt when using AEAD_CHACHA20_POLY1305.
 const InvalidPacketLimitChaCha = 1 << 36
+
+// DefaultTCPMSS is the default maximum packet size used in the Linux TCP implementation.
+// Used in QUIC for congestion window computations in bytes.
+const DefaultTCPMSS ByteCount = 1460

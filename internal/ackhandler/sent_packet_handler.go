@@ -118,13 +118,6 @@ func newSentPacketHandler(
 	tracer *logging.ConnectionTracer,
 	logger utils.Logger,
 ) *sentPacketHandler {
-	congestion := congestion.NewCubicSender(
-		congestion.DefaultClock{},
-		rttStats,
-		initialMaxDatagramSize,
-		true, // use Reno
-		tracer,
-	)
 
 	h := &sentPacketHandler{
 		peerCompletedAddressValidation: pers == protocol.PerspectiveServer,
@@ -133,11 +126,24 @@ func newSentPacketHandler(
 		handshakePackets:               newPacketNumberSpace(0, false),
 		appDataPackets:                 newPacketNumberSpace(0, true),
 		rttStats:                       rttStats,
-		congestion:                     congestion,
 		perspective:                    pers,
 		tracer:                         tracer,
 		logger:                         logger,
 	}
+	
+	congestion := congestion.NewBbrSender(
+		congestion.DefaultClock{},
+		rttStats,
+		protocol.InitialCongestionWindow,
+		protocol.DefaultBBRMaxCongestionWindow,
+		initialMaxDatagramSize,
+		func() protocol.ByteCount {
+			return h.bytesInFlight
+		},
+		tracer,
+	)
+	h.congestion = congestion
+	
 	if enableECN {
 		h.enableECN = true
 		h.ecnTracker = newECNTracker(logger, tracer)
@@ -350,19 +356,22 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil && largestAcked > pnSpace.largestAcked {
 		congested := h.ecnTracker.HandleNewlyAcked(ackedPackets, int64(ack.ECT0), int64(ack.ECT1), int64(ack.ECNCE))
 		if congested {
-			h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight)
+			h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight, rcvTime)
 		}
 	}
 
 	pnSpace.largestAcked = max(pnSpace.largestAcked, largestAcked)
 
-	if err := h.detectLostPackets(rcvTime, encLevel); err != nil {
+	_, err = h.BbrDetectLostPackets(rcvTime, encLevel)
+	if err != nil {
 		return false, err
 	}
 	var acked1RTTPacket bool
 	for _, p := range ackedPackets {
 		if p.includedInBytesInFlight && !p.declaredLost {
 			h.congestion.OnPacketAcked(p.PacketNumber, p.Length, priorInFlight, rcvTime)
+			// pp := p.ToPacket()
+			// h.congestion.OnCongestionEvent(priorInFlight, rcvTime, ackedPackets, nil)
 		}
 		if p.EncryptionLevel == protocol.Encryption1RTT {
 			acked1RTTPacket = true
@@ -658,7 +667,7 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 				h.removeFromBytesInFlight(p)
 				h.queueFramesForRetransmission(p)
 				if !p.IsPathMTUProbePacket {
-					h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight)
+					h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
 				}
 				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
 					h.ecnTracker.LostPacket(p.PacketNumber)
@@ -667,6 +676,77 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 		}
 		return true, nil
 	})
+}
+
+func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protocol.EncryptionLevel) ([]*packet, error) {
+	pnSpace := h.getPacketNumberSpace(encLevel)
+	pnSpace.lossTime = time.Time{}
+
+	maxRTT := float64(max(h.rttStats.LatestRTT(), h.rttStats.SmoothedRTT()))
+	lossDelay := time.Duration(timeThreshold * maxRTT)
+
+	// Minimum time of granularity before packets are deemed lost.
+	lossDelay = max(lossDelay, protocol.TimerGranularity)
+
+	// Packets sent before this time are deemed lost.
+	lostSendTime := now.Add(-lossDelay)
+
+	priorInFlight := h.bytesInFlight
+	var lostPackets []*packet
+	pnSpace.history.Iterate(func(p *packet) (bool, error) {
+		if p.PacketNumber > pnSpace.largestAcked {
+			return false, nil
+		}
+
+		var packetLost bool
+		if p.SendTime.Before(lostSendTime) {
+			packetLost = true
+			lostPackets = append(lostPackets, p)
+			if !p.skippedPacket {
+				if h.logger.Debug() {
+					h.logger.Debugf("\tlost packet %d (time threshold)", p.PacketNumber)
+				}
+				if h.tracer != nil && h.tracer.LostPacket != nil {
+					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossTimeThreshold)
+				}
+			}
+		} else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
+			packetLost = true
+			lostPackets = append(lostPackets, p)
+			if !p.skippedPacket {
+				if h.logger.Debug() {
+					h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
+				}
+				if h.tracer != nil && h.tracer.LostPacket != nil {
+					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
+				}
+			}
+		} else if pnSpace.lossTime.IsZero() {
+			// Note: This conditional is only entered once per call
+			lossTime := p.SendTime.Add(lossDelay)
+			if h.logger.Debug() {
+				h.logger.Debugf("\tsetting loss timer for packet %d (%s) to %s (in %s)", p.PacketNumber, encLevel, lossDelay, lossTime)
+			}
+			pnSpace.lossTime = lossTime
+		}
+		if packetLost {
+			pnSpace.history.DeclareLost(p.PacketNumber)
+			if !p.skippedPacket {
+				// the bytes in flight need to be reduced no matter if the frames in this packet will be retransmitted
+				h.removeFromBytesInFlight(p)
+				h.queueFramesForRetransmission(p)
+				if !p.IsPathMTUProbePacket {
+					// h.congestion.OnCongestionEvent(priorInFlight, time.Now(), nil, p)
+					h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
+				}
+				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
+					h.ecnTracker.LostPacket(p.PacketNumber)
+				}
+			}
+		}
+		return true, nil
+	})
+	return lostPackets, nil
 }
 
 func (h *sentPacketHandler) OnLossDetectionTimeout() error {
@@ -680,7 +760,8 @@ func (h *sentPacketHandler) OnLossDetectionTimeout() error {
 			h.tracer.LossTimerExpired(logging.TimerTypeACK, encLevel)
 		}
 		// Early retransmit or time loss detection
-		return h.detectLostPackets(time.Now(), encLevel)
+		_, err := h.BbrDetectLostPackets(time.Now(), encLevel)
+		return err
 	}
 
 	// PTO

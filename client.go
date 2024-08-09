@@ -198,9 +198,12 @@ func dial(
 	if c.tracer != nil && c.tracer.StartedConnection != nil {
 		c.tracer.StartedConnection(c.sendConn.LocalAddr(), c.sendConn.RemoteAddr(), c.srcConnID, c.destConnID)
 	}
+	fmt.Println("NEWSENTPACKETHANDLER_newclientconnection_dial_ctx.Done_DIAL")
 	if err := c.dial(ctx); err != nil {
+		fmt.Println("DIAL ERR:", err)
 		return nil, err
 	}
+	fmt.Println("NEWSENTPACKETHANDLER_newclientconnection_dial_ctx.Done_AFTERDIAL")
 	return c.conn, nil
 }
 
@@ -231,7 +234,6 @@ func newClient(sendConn sendConn, connIDGenerator ConnectionIDGenerator, config 
 
 func (c *client) dial(ctx context.Context) error {
 	c.logger.Infof("Starting new connection to %s (%s -> %s), source connection ID %s, destination connection ID %s, version %s", c.tlsConf.ServerName, c.sendConn.LocalAddr(), c.sendConn.RemoteAddr(), c.srcConnID, c.destConnID, c.version)
-
 	c.conn = newClientConnection(
 		c.sendConn,
 		c.packetHandlers,
@@ -249,7 +251,6 @@ func (c *client) dial(ctx context.Context) error {
 		c.version,
 	)
 	c.packetHandlers.Add(c.srcConnID, c.conn)
-
 	errorChan := make(chan error, 1)
 	recreateChan := make(chan errCloseForRecreating)
 	go func() {
@@ -271,9 +272,9 @@ func (c *client) dial(ctx context.Context) error {
 	if c.use0RTT {
 		earlyConnChan = c.conn.earlyConnReady()
 	}
-
 	select {
 	case <-ctx.Done():
+		fmt.Println("NEWSENTPACKETHANDLER_newclientconnection_dial_ctx.Done")
 		c.conn.destroy(nil)
 		return context.Cause(ctx)
 	case err := <-errorChan:

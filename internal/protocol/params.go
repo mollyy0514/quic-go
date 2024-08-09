@@ -181,3 +181,12 @@ const Max0RTTQueues = 32
 // To avoid blocking, this value has to be smaller than MaxConnUnprocessedPackets.
 // To avoid packets being dropped as undecryptable by the connection, this value has to be smaller than MaxUndecryptablePackets.
 const Max0RTTQueueLen = 31
+
+// DefaultMaxCongestionWindow is the default for the max congestion window
+const DefaultMaxCongestionWindow ByteCount = MaxCongestionWindowPackets * DefaultTCPMSS
+
+// DefaultBBRMaxCongestionWindow is the default for the max congestion window in BBR algorithm
+const DefaultBBRMaxCongestionWindow ByteCount = 2000 * DefaultTCPMSS
+
+// InitialCongestionWindow is the initial congestion window in QUIC packets
+const InitialCongestionWindow ByteCount = 32 * DefaultTCPMSS

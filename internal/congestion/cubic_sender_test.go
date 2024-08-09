@@ -80,14 +80,14 @@ var _ = Describe("Cubic Sender", func() {
 	LoseNPacketsLen := func(n int, packetLength protocol.ByteCount) {
 		for i := 0; i < n; i++ {
 			ackedPacketNumber++
-			sender.OnCongestionEvent(ackedPacketNumber, packetLength, bytesInFlight)
+			sender.OnCongestionEvent(ackedPacketNumber, packetLength, bytesInFlight, time.Now())
 		}
 		bytesInFlight -= protocol.ByteCount(n) * packetLength
 	}
 
 	// Does not increment acked_packet_number_.
 	LosePacket := func(number protocol.PacketNumber) {
-		sender.OnCongestionEvent(number, maxDatagramSize, bytesInFlight)
+		sender.OnCongestionEvent(number, maxDatagramSize, bytesInFlight, time.Now())
 		bytesInFlight -= maxDatagramSize
 	}
 
