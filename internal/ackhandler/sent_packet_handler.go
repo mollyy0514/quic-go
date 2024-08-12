@@ -134,9 +134,10 @@ func newSentPacketHandler(
 	congestion := congestion.NewBbrSender(
 		congestion.DefaultClock{},
 		rttStats,
+		// true,
+		initialMaxDatagramSize,
 		protocol.InitialCongestionWindow,
 		protocol.DefaultBBRMaxCongestionWindow,
-		initialMaxDatagramSize,
 		func() protocol.ByteCount {
 			return h.bytesInFlight
 		},
@@ -369,7 +370,7 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	var acked1RTTPacket bool
 	for _, p := range ackedPackets {
 		if p.includedInBytesInFlight && !p.declaredLost {
-			h.congestion.OnPacketAcked(p.PacketNumber, p.Length, priorInFlight, rcvTime)
+			h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, rcvTime)
 			// pp := p.ToPacket()
 			// h.congestion.OnCongestionEvent(priorInFlight, rcvTime, ackedPackets, nil)
 		}
