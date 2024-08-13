@@ -274,6 +274,7 @@ func (c *client) dial(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
+		fmt.Println("NEWSENTPACKETHANDLER_newclientconnection_dial_ctx.Done")
 		c.conn.destroy(nil)
 		return context.Cause(ctx)
 	case err := <-errorChan:
@@ -287,6 +288,7 @@ func (c *client) dial(ctx context.Context) error {
 		// ready to send 0-RTT data
 		return nil
 	case <-c.conn.HandshakeComplete():
+		fmt.Println("NEWSENTPACKETHANDLER_newclientconnection_dial_HandshakeComplete")
 		// handshake successfully completed
 		return nil
 	}

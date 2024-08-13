@@ -24,7 +24,7 @@ const PACKET_LEN = 250
 const SERVER = "0.0.0.0"
 const PORT_UL = 4200
 const PORT_DL = 4201
-const SLEEPTIME = 0
+const SLEEPTIME = 10
 
 // We start a server echoing data on the first stream the client opens,
 // then connect with a client, send the message, and wait for its receipt.
@@ -76,7 +76,7 @@ func HandleQuicStream_ul(stream quic.Stream) {
 }
 
 func HandleQuicStream_dl(stream quic.Stream) {
-	duration := 200 * time.Second
+	duration := 20 * time.Second
 	seq := 1
 	start_time := time.Now()
 	euler := 271828
