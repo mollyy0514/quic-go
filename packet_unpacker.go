@@ -201,7 +201,7 @@ func unpackLongHeader(hd headerDecryptor, hdr *wire.Header, data []byte, v proto
 	hdrLen := hdr.ParsedLen()
 	if protocol.ByteCount(len(data)) < hdrLen+4+16 {
 		//nolint:stylecheck
-		return nil, fmt.Errorf("Packet too small. Expected at least 20 bytes after the header, got %d", protocol.ByteCount(len(data))-hdrLen)
+		return nil, fmt.Errorf("packet too small. Expected at least 20 bytes after the header, got %d", protocol.ByteCount(len(data))-hdrLen)
 	}
 	// The packet number can be up to 4 bytes long, but we won't know the length until we decrypt it.
 	// 1. save a copy of the 4 bytes
