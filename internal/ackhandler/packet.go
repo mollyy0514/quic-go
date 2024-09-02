@@ -26,11 +26,11 @@ type packet struct {
 	// There are two reasons why a packet cannot be retransmitted:
 	// * it was already retransmitted
 	// * this packet is a retransmission, and we already received an ACK for the original packet
-	canBeRetransmitted      bool
+	// canBeRetransmitted      bool
 	includedInBytesInFlight bool
-	retransmittedAs         []protocol.PacketNumber
-	isRetransmission        bool // we need a separate bool here because 0 is a valid packet number
-	retransmissionOf        protocol.PacketNumber
+	// retransmittedAs         []protocol.PacketNumber
+	// isRetransmission        bool // we need a separate bool here because 0 is a valid packet number
+	// retransmissionOf        protocol.PacketNumber
 }
 
 func (p *packet) outstanding() bool {

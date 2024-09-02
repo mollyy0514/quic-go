@@ -38,11 +38,12 @@ func MinFilter(a, b int64) bool {
 }
 
 func NewWindowedFilter(windowLength int64, comparator func(int64, int64) bool) *WindowedFilter {
-	return &WindowedFilter{
+	f := &WindowedFilter{
 		windowLength: windowLength,
 		estimates:    make([]Sample, 3),
 		comparator:   comparator,
 	}
+	return f
 }
 
 // Changes the window length.  Does not update any current samples.

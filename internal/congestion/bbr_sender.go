@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/protocol"
@@ -236,12 +237,12 @@ type bbrSender struct {
 }
 
 func NewBbrSender(
-	clock Clock, 
-	rttStats *utils.RTTStats, 
+	clock Clock,
+	rttStats *utils.RTTStats,
 	initialMaxDatagramSize,
-	initialCongestionWindow, 
-	maxCongestionWindow protocol.ByteCount, 
-	getBytesInFlight func() protocol.ByteCount, 
+	initialCongestionWindow,
+	maxCongestionWindow protocol.ByteCount,
+	getBytesInFlight func() protocol.ByteCount,
 	tracer *logging.ConnectionTracer) *bbrSender {
 	b := &bbrSender{
 		rttStats:                  rttStats,
@@ -265,7 +266,7 @@ func NewBbrSender(
 		recoveryState:             NOT_IN_RECOVERY,
 		recoveryWindow:            maxCongestionWindow,
 		minRttSinceLastProbeRtt:   InfiniteRTT,
-		tracer: 				   tracer,
+		tracer:                    tracer,
 		maxDatagramSize:           initialMaxDatagramSize,
 	}
 	b.pacer = newPacer(b.BandwidthEstimate)
@@ -326,65 +327,25 @@ func (b *bbrSender) OnPacketLost(number protocol.PacketNumber, lostBytes protoco
 	panic("should call OnCongestionEvent()")
 }
 
-func (b *bbrSender) OnCongestionEvent(packetNumber protocol.PacketNumber, lostBytes, priorInFlight protocol.ByteCount, eventTime time.Time) {
-	totalBytesAckedBefore := b.sampler.totalBytesAcked
-	isRoundStart, minRttExpired := false, false
-
-	if lostBytes != 0 {
-		b.DiscardLostPacket(packetNumber, lostBytes)
-	}
-
-	// Input the new data into the BBR model of the connection.
-	var excessAcked protocol.ByteCount
-	isRoundStart = b.UpdateRoundTripCounter(packetNumber)
-	minRttExpired = b.UpdateBandwidthAndMinRtt(eventTime, packetNumber)
-	b.UpdateRecoveryState(packetNumber, lostBytes > 0, isRoundStart)
-	bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore  // Calculate number of packets acked and lost.
-	excessAcked = b.UpdateAckAggregationBytes(eventTime, bytesAcked)
-
-	// Handle logic specific to PROBE_BW mode.
-	if b.mode == PROBE_BW {
-		b.UpdateGainCyclePhase(eventTime, priorInFlight, lostBytes > 0)
-	}
-
-	// Handle logic specific to STARTUP and DRAIN modes.
-	if isRoundStart && !b.isAtFullBandwidth {
-		b.CheckIfFullBandwidthReached()
-	}
-	b.MaybeExitStartupOrDrain(eventTime)
-
-	// Handle logic specific to PROBE_RTT.
-	b.MaybeEnterOrExitProbeRtt(eventTime, isRoundStart, minRttExpired)
-
-	// After the model is updated, recalculate the pacing rate and congestion
-	// window.
-	b.CalculatePacingRate()
-	b.CalculateCongestionWindow(bytesAcked, excessAcked)
-	b.CalculateRecoveryWindow(bytesAcked, lostBytes)
-}
-
-// func (b *bbrSender) OnCongestionEvent(priorInFlight protocol.ByteCount, eventTime time.Time, ackedPackets, lostPackets []*protocol.Packet) {
+// func (b *bbrSender) OnCongestionEvent(packetNumber protocol.PacketNumber, lostBytes, priorInFlight protocol.ByteCount, eventTime time.Time) {
 // 	totalBytesAckedBefore := b.sampler.totalBytesAcked
 // 	isRoundStart, minRttExpired := false, false
 
-// 	if lostPackets != nil {
-// 		b.DiscardLostPackets(lostPackets)
+// 	if lostBytes != 0 {
+// 		b.DiscardLostPacket(packetNumber, lostBytes)
 // 	}
 
 // 	// Input the new data into the BBR model of the connection.
 // 	var excessAcked protocol.ByteCount
-// 	if len(ackedPackets) > 0 {
-// 		lastAckedPacket := ackedPackets[len(ackedPackets)-1].PacketNumber
-// 		isRoundStart = b.UpdateRoundTripCounter(lastAckedPacket)
-// 		minRttExpired = b.UpdateBandwidthAndMinRtt(eventTime, ackedPackets)
-// 		b.UpdateRecoveryState(lastAckedPacket, len(lostPackets) > 0, isRoundStart)
-// 		bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore
-// 		excessAcked = b.UpdateAckAggregationBytes(eventTime, bytesAcked)
-// 	}
+// 	isRoundStart = b.UpdateRoundTripCounter(packetNumber)
+// 	minRttExpired = b.UpdateBandwidthAndMinRtt(eventTime, packetNumber, priorInFlight)
+// 	b.UpdateRecoveryState(packetNumber, lostBytes > 0, isRoundStart)
+// 	bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore // Calculate number of packets acked and lost.
+// 	excessAcked = b.UpdateAckAggregationBytes(eventTime, bytesAcked)
 
 // 	// Handle logic specific to PROBE_BW mode.
 // 	if b.mode == PROBE_BW {
-// 		b.UpdateGainCyclePhase(eventTime, priorInFlight, len(lostPackets) > 0)
+// 		b.UpdateGainCyclePhase(eventTime, priorInFlight, lostBytes > 0)
 // 	}
 
 // 	// Handle logic specific to STARTUP and DRAIN modes.
@@ -396,19 +357,119 @@ func (b *bbrSender) OnCongestionEvent(packetNumber protocol.PacketNumber, lostBy
 // 	// Handle logic specific to PROBE_RTT.
 // 	b.MaybeEnterOrExitProbeRtt(eventTime, isRoundStart, minRttExpired)
 
-// 	// Calculate number of packets acked and lost.
-// 	bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore
-// 	bytesLost := protocol.ByteCount(0)
-// 	for _, packet := range lostPackets {
-// 		bytesLost += packet.Length
-// 	}
-
 // 	// After the model is updated, recalculate the pacing rate and congestion
 // 	// window.
 // 	b.CalculatePacingRate()
 // 	b.CalculateCongestionWindow(bytesAcked, excessAcked)
-// 	b.CalculateRecoveryWindow(bytesAcked, bytesLost)
+// 	b.CalculateRecoveryWindow(bytesAcked, lostBytes)
+
+	// // Convert ByteCount to string and add a newline
+	// pacingStr := fmt.Sprintf("%d\n", b.pacingRate)
+
+	// // Open the file in append mode, create it if it doesn't exist
+	// pacingFile, err := os.OpenFile("pacing.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// if err != nil {
+	// 	fmt.Println("Error opening file:", err)
+	// 	return
+	// }
+	// defer pacingFile.Close()
+	// // Write the string value to the file
+    // if _, err := pacingFile.WriteString(pacingStr); err != nil {
+    //     fmt.Println("Error writing to file:", err)
+    // }
+
+	// // Convert ByteCount to string and add a newline
+	// cwndStr := fmt.Sprintf("%d\n", b.congestionWindow)
+
+	// // Open the file in append mode, create it if it doesn't exist
+	// cwndFile, err := os.OpenFile("cwnd.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// if err != nil {
+	// 	fmt.Println("Error opening file:", err)
+	// 	return
+	// }
+	// defer cwndFile.Close()
+	// // Write the string value to the file
+	// if _, err := cwndFile.WriteString(cwndStr); err != nil {
+	// 	fmt.Println("Error writing to file:", err)
+	// }
 // }
+
+func (b *bbrSender) OnCongestionEvent(priorInFlight protocol.ByteCount, eventTime time.Time, ackedPackets, lostPackets []*protocol.Packet) {
+	totalBytesAckedBefore := b.sampler.totalBytesAcked
+	isRoundStart, minRttExpired := false, false
+
+	if lostPackets != nil {
+		b.DiscardLostPackets(lostPackets)
+	}
+
+	// Input the new data into the BBR model of the connection.
+	var excessAcked protocol.ByteCount
+	if len(ackedPackets) > 0 {
+		lastAckedPacket := ackedPackets[len(ackedPackets)-1].PacketNumber
+		isRoundStart = b.UpdateRoundTripCounter(lastAckedPacket)
+		minRttExpired = b.UpdateBandwidthAndMinRtt(eventTime, ackedPackets)
+		b.UpdateRecoveryState(lastAckedPacket, len(lostPackets) > 0, isRoundStart)
+		bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore
+		excessAcked = b.UpdateAckAggregationBytes(eventTime, bytesAcked)
+	}
+
+	// Handle logic specific to PROBE_BW mode.
+	if b.mode == PROBE_BW {
+		b.UpdateGainCyclePhase(eventTime, priorInFlight, len(lostPackets) > 0)
+	}
+
+	// Handle logic specific to STARTUP and DRAIN modes.
+	if isRoundStart && !b.isAtFullBandwidth {
+		b.CheckIfFullBandwidthReached()
+	}
+	b.MaybeExitStartupOrDrain(eventTime)
+
+	// Handle logic specific to PROBE_RTT.
+	b.MaybeEnterOrExitProbeRtt(eventTime, isRoundStart, minRttExpired)
+
+	// Calculate number of packets acked and lost.
+	bytesAcked := b.sampler.totalBytesAcked - totalBytesAckedBefore
+	bytesLost := protocol.ByteCount(0)
+	for _, packet := range lostPackets {
+		bytesLost += packet.Length
+	}
+
+	// After the model is updated, recalculate the pacing rate and congestion
+	// window.
+	b.CalculatePacingRate()
+	b.CalculateCongestionWindow(bytesAcked, excessAcked)
+	b.CalculateRecoveryWindow(bytesAcked, bytesLost)
+
+	// Convert ByteCount to string and add a newline
+	pacingStr := fmt.Sprintf("%d\n", b.pacingRate)
+
+	// Open the file in append mode, create it if it doesn't exist
+	pacingFile, err := os.OpenFile("pacing.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer pacingFile.Close()
+	// Write the string value to the file
+	if _, err := pacingFile.WriteString(pacingStr); err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+
+	// Convert ByteCount to string and add a newline
+	cwndStr := fmt.Sprintf("%d\n", b.congestionWindow)
+
+	// Open the file in append mode, create it if it doesn't exist
+	cwndFile, err := os.OpenFile("cwnd.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer cwndFile.Close()
+	// Write the string value to the file
+	if _, err := cwndFile.WriteString(cwndStr); err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+}
 
 func (b *bbrSender) SetNumEmulatedConnections(n int) {
 
@@ -497,36 +558,86 @@ func (b *bbrSender) UpdateRoundTripCounter(lastAckedPacket protocol.PacketNumber
 	return false
 }
 
-func (b *bbrSender) UpdateBandwidthAndMinRtt(now time.Time, packetNumber protocol.PacketNumber) bool {
+// func (b *bbrSender) UpdateBandwidthAndMinRtt(now time.Time, packetNumber protocol.PacketNumber, priorInFlight protocol.ByteCount) bool {
+// 	sampleMinRtt := InfiniteRTT
+
+// 	// for _, packet := range ackedPackets {
+// 	if !b.alwaysGetBwSampleWhenAcked && priorInFlight == 0 {
+// 		// Skip acked packets with 0 in flight bytes when updating bandwidth.
+// 		// continue
+// 		return false
+// 	}
+// 	bandwidthSample := b.sampler.OnPacketAcked(now, packetNumber)
+// 	if b.alwaysGetBwSampleWhenAcked && !bandwidthSample.stateAtSend.isValid {
+// 		// From the sampler's perspective, the packet has never been sent, or the
+// 		// packet has been acked or marked as lost previously.
+// 		// continue
+// 		return false
+// 	}
+// 	b.lastSampleIsAppLimited = bandwidthSample.stateAtSend.isAppLimited
+// 	//     has_non_app_limited_sample_ |=
+// 	//        !bandwidth_sample.state_at_send.is_app_limited;
+// 	if !bandwidthSample.stateAtSend.isAppLimited {
+// 		b.hasNoAppLimitedSample = true
+// 	}
+// 	if bandwidthSample.rtt > 0 {
+// 		sampleMinRtt = minRtt(sampleMinRtt, bandwidthSample.rtt)
+// 	}
+// 	if !bandwidthSample.stateAtSend.isAppLimited || bandwidthSample.bandwidth > b.BandwidthEstimate() {
+// 		b.maxBandwidth.Update(int64(bandwidthSample.bandwidth), b.roundTripCount)
+// 	}
+// 	// }
+
+// 	// If none of the RTT samples are valid, return immediately.
+// 	if sampleMinRtt == InfiniteRTT {
+// 		return false
+// 	}
+
+// 	b.minRttSinceLastProbeRtt = minRtt(b.minRttSinceLastProbeRtt, sampleMinRtt)
+// 	// Do not expire min_rtt if none was ever available.
+// 	minRttExpired := b.minRtt > 0 && (now.After(b.minRttTimestamp.Add(MinRttExpiry)))
+// 	if minRttExpired || sampleMinRtt < b.minRtt || b.minRtt == 0 {
+// 		if minRttExpired && b.ShouldExtendMinRttExpiry() {
+// 			minRttExpired = false
+// 		} else {
+// 			b.minRtt = sampleMinRtt
+// 		}
+// 		b.minRttTimestamp = now
+// 		// Reset since_last_probe_rtt fields.
+// 		b.minRttSinceLastProbeRtt = InfiniteRTT
+// 		b.appLimitedSinceLastProbeRtt = false
+// 	}
+
+// 	return minRttExpired
+// }
+
+func (b *bbrSender) UpdateBandwidthAndMinRtt(now time.Time, ackedPackets []*protocol.Packet) bool {
 	sampleMinRtt := InfiniteRTT
 
-	// for _, packet := range ackedPackets {
-	if !b.alwaysGetBwSampleWhenAcked {
-	// if !b.alwaysGetBwSampleWhenAcked && packet.Length == 0 {
-		// Skip acked packets with 0 in flight bytes when updating bandwidth.
-		// continue
-		return false
+	for _, packet := range ackedPackets {
+		if !b.alwaysGetBwSampleWhenAcked && packet.Length == 0 {
+			// Skip acked packets with 0 in flight bytes when updating bandwidth.
+			continue
+		}
+		bandwidthSample := b.sampler.OnPacketAcked(now, packet.PacketNumber)
+		if b.alwaysGetBwSampleWhenAcked && !bandwidthSample.stateAtSend.isValid {
+			// From the sampler's perspective, the packet has never been sent, or the
+			// packet has been acked or marked as lost previously.
+			continue
+		}
+		b.lastSampleIsAppLimited = bandwidthSample.stateAtSend.isAppLimited
+		//     has_non_app_limited_sample_ |=
+		//        !bandwidth_sample.state_at_send.is_app_limited;
+		if !bandwidthSample.stateAtSend.isAppLimited {
+			b.hasNoAppLimitedSample = true
+		}
+		if bandwidthSample.rtt > 0 {
+			sampleMinRtt = minRtt(sampleMinRtt, bandwidthSample.rtt)
+		}
+		if !bandwidthSample.stateAtSend.isAppLimited || bandwidthSample.bandwidth > b.BandwidthEstimate() {
+			b.maxBandwidth.Update(int64(bandwidthSample.bandwidth), b.roundTripCount)
+		}
 	}
-	bandwidthSample := b.sampler.OnPacketAcked(now, packetNumber)
-	if b.alwaysGetBwSampleWhenAcked && !bandwidthSample.stateAtSend.isValid {
-		// From the sampler's perspective, the packet has never been sent, or the
-		// packet has been acked or marked as lost previously.
-		// continue
-		return false
-	}
-	b.lastSampleIsAppLimited = bandwidthSample.stateAtSend.isAppLimited
-	//     has_non_app_limited_sample_ |=
-	//        !bandwidth_sample.state_at_send.is_app_limited;
-	if !bandwidthSample.stateAtSend.isAppLimited {
-		b.hasNoAppLimitedSample = true
-	}
-	if bandwidthSample.rtt > 0 {
-		sampleMinRtt = minRtt(sampleMinRtt, bandwidthSample.rtt)
-	}
-	if !bandwidthSample.stateAtSend.isAppLimited || bandwidthSample.bandwidth > b.BandwidthEstimate() {
-		b.maxBandwidth.Update(int64(bandwidthSample.bandwidth), b.roundTripCount)
-	}
-	// }
 
 	// If none of the RTT samples are valid, return immediately.
 	if sampleMinRtt == InfiniteRTT {
@@ -568,31 +679,31 @@ func (b *bbrSender) ShouldExtendMinRttExpiry() bool {
 	return false
 }
 
-func (b *bbrSender) DiscardLostPacket(packetNumber protocol.PacketNumber, lostBytes protocol.ByteCount) {
-	b.sampler.OnPacketLost(packetNumber)
-	if b.mode == STARTUP {
-		// if b.rttStats != nil {
-		// TODO: slow start.
-		// }
-		if b.startupRateReductionMultiplier != 0 {
-			b.startupBytesLost += lostBytes
-		}
-	}
-}
-
-// func (b *bbrSender) DiscardLostPackets(lostPackets []*protocol.Packet) {
-// 	for _, packet := range lostPackets {
-// 		b.sampler.OnPacketLost(packet.PacketNumber)
-// 		if b.mode == STARTUP {
-// 			// if b.rttStats != nil {
-// 			// TODO: slow start.
-// 			// }
-// 			if b.startupRateReductionMultiplier != 0 {
-// 				b.startupBytesLost += packet.Length
-// 			}
+// func (b *bbrSender) DiscardLostPacket(packetNumber protocol.PacketNumber, lostBytes protocol.ByteCount) {
+// 	b.sampler.OnPacketLost(packetNumber)
+// 	if b.mode == STARTUP {
+// 		// if b.rttStats != nil {
+// 		// TODO: slow start.
+// 		// }
+// 		if b.startupRateReductionMultiplier != 0 {
+// 			b.startupBytesLost += lostBytes
 // 		}
 // 	}
 // }
+
+func (b *bbrSender) DiscardLostPackets(lostPackets []*protocol.Packet) {
+	for _, packet := range lostPackets {
+		b.sampler.OnPacketLost(packet.PacketNumber)
+		if b.mode == STARTUP {
+			// if b.rttStats != nil {
+			// TODO: slow start.
+			// }
+			if b.startupRateReductionMultiplier != 0 {
+				b.startupBytesLost += packet.Length
+			}
+		}
+	}
+}
 
 func (b *bbrSender) UpdateRecoveryState(lastAckedPacket protocol.PacketNumber, hasLosses, isRoundStart bool) {
 	// Exit recovery when there are no losses for a round.
@@ -813,12 +924,15 @@ func (b *bbrSender) OnExitStartup(now time.Time) {
 
 func (b *bbrSender) CalculatePacingRate() {
 	if b.BandwidthEstimate() == 0 {
+		// fmt.Println("b.BandwidthEstimate() == 0")
 		return
 	}
 
 	targetRate := Bandwidth(b.pacingGain * float64(b.BandwidthEstimate()))
+	// fmt.Println("targetRate", targetRate)
 	if b.isAtFullBandwidth {
 		b.pacingRate = targetRate
+		// fmt.Println("b.isAtFullBandwidth", b.pacingRate)
 		return
 	}
 
@@ -826,12 +940,14 @@ func (b *bbrSender) CalculatePacingRate() {
 	// available.
 	if b.pacingRate == 0 && b.rttStats.MinRTT() > 0 {
 		b.pacingRate = BandwidthFromDelta(b.initialCongestionWindow, b.rttStats.MinRTT())
+		// fmt.Println("b.pacingRate == 0 && b.rttStats.MinRTT() > 0", b.pacingRate)
 		return
 	}
 	// Slow the pacing rate in STARTUP once loss has ever been detected.
 	hasEverDetectedLoss := b.endRecoveryAt > 0
 	if b.slowerStartup && hasEverDetectedLoss && b.hasNoAppLimitedSample {
 		b.pacingRate = Bandwidth(StartupAfterLossGain * float64(b.BandwidthEstimate()))
+		// fmt.Println("b.slowerStartup && hasEverDetectedLoss && b.hasNoAppLimitedSample", b.pacingRate)
 		return
 	}
 
@@ -841,11 +957,13 @@ func (b *bbrSender) CalculatePacingRate() {
 		// Ensure the pacing rate doesn't drop below the startup growth target times
 		// the bandwidth estimate.
 		b.pacingRate = maxBandwidth(b.pacingRate, Bandwidth(StartupGrowthTarget*float64(b.BandwidthEstimate())))
+		// fmt.Println("b.startupRateReductionMultiplier != 0 && hasEverDetectedLoss && b.hasNoAppLimitedSample", b.pacingRate)
 		return
 	}
 
 	// Do not decrease the pacing rate during startup.
 	b.pacingRate = maxBandwidth(b.pacingRate, targetRate)
+	// fmt.Println("STARTUP", b.pacingRate)
 }
 
 func (b *bbrSender) CalculateCongestionWindow(ackedBytes, excessAcked protocol.ByteCount) {

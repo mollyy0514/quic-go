@@ -354,12 +354,13 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	}
 
 	// Only inform the ECN tracker about new 1-RTT ACKs if the ACK increases the largest acked.
-	if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil && largestAcked > pnSpace.largestAcked {
-		congested := h.ecnTracker.HandleNewlyAcked(ackedPackets, int64(ack.ECT0), int64(ack.ECT1), int64(ack.ECNCE))
-		if congested {
-			h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight, rcvTime)
-		}
-	}
+	// var congested bool
+	// if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil && largestAcked > pnSpace.largestAcked {
+	// 	congested = h.ecnTracker.HandleNewlyAcked(ackedPackets, int64(ack.ECT0), int64(ack.ECT1), int64(ack.ECNCE))
+		// if congested {
+		// 	h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight, rcvTime)
+		// }
+	// }
 
 	pnSpace.largestAcked = max(pnSpace.largestAcked, largestAcked)
 
@@ -367,15 +368,29 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	if err != nil {
 		return false, err
 	}
+	// has impled CongestionEvent interface.
+	congestionEventHandler, hasCongestionEvent := h.congestion.(congestion.CongestionEvent)
+	var ackedPacketsForEvent, lostPacketsForEvent []*protocol.Packet
 	var acked1RTTPacket bool
 	for _, p := range ackedPackets {
-		if p.includedInBytesInFlight && !p.declaredLost {
-			h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, rcvTime)
-			// pp := p.ToPacket()
-			// h.congestion.OnCongestionEvent(priorInFlight, rcvTime, ackedPackets, nil)
-		}
+		// if p.includedInBytesInFlight && !p.declaredLost {
+		// 	h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, rcvTime)
+		// }
 		if p.EncryptionLevel == protocol.Encryption1RTT {
 			acked1RTTPacket = true
+		}
+		if p.LargestAcked != protocol.InvalidPacketNumber && encLevel == protocol.Encryption1RTT {
+			h.lowestNotConfirmedAcked = max(h.lowestNotConfirmedAcked, p.LargestAcked+1)
+		}
+		// I did not implement onPacketAcked since I'm not sure whether this is necessary,
+		// or the similar function has already be implemented since this is not related to the CCA.
+		// if err := h.onPacketAcked(p, rcvTime); err != nil {
+		// 	return false, err
+		// }
+		if p.includedInBytesInFlight {
+			if hasCongestionEvent {
+				ackedPacketsForEvent = append(ackedPacketsForEvent, p.ToPacket())
+			}
 		}
 		h.removeFromBytesInFlight(p)
 		putPacket(p)
@@ -383,6 +398,19 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	// After this point, we must not use ackedPackets any longer!
 	// We've already returned the buffers.
 	ackedPackets = nil //nolint:ineffassign // This is just to be on the safe side.
+	lostPackets, err := h.BbrDetectLostPackets(rcvTime, encLevel)
+	if hasCongestionEvent {
+		if lostPackets != nil {
+			lostPacketsForEvent := make([]*protocol.Packet, len(lostPackets))
+			for idx, p := range lostPackets {
+				lostPacketsForEvent[idx] = p.ToPacket()
+			}
+		}
+		congestionEventHandler.OnCongestionEvent(priorInFlight, rcvTime, ackedPacketsForEvent, lostPacketsForEvent)
+	}
+	if err != nil {
+		return false, err
+	}
 
 	// Reset the pto_count unless the client is unsure if the server has validated the client's address.
 	if h.peerCompletedAddressValidation {
@@ -626,7 +654,7 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 	// Packets sent before this time are deemed lost.
 	lostSendTime := now.Add(-lossDelay)
 
-	priorInFlight := h.bytesInFlight
+	// priorInFlight := h.bytesInFlight
 	return pnSpace.history.Iterate(func(p *packet) (bool, error) {
 		if p.PacketNumber > pnSpace.largestAcked {
 			return false, nil
@@ -667,9 +695,9 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 				// the bytes in flight need to be reduced no matter if the frames in this packet will be retransmitted
 				h.removeFromBytesInFlight(p)
 				h.queueFramesForRetransmission(p)
-				if !p.IsPathMTUProbePacket {
-					h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
-				}
+				// if !p.IsPathMTUProbePacket {
+				// 	h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
+				// }
 				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
 					h.ecnTracker.LostPacket(p.PacketNumber)
 				}
@@ -681,7 +709,9 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 
 func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protocol.EncryptionLevel) ([]*packet, error) {
 	pnSpace := h.getPacketNumberSpace(encLevel)
-	pnSpace.lossTime = time.Time{}
+	if encLevel == protocol.Encryption1RTT {
+		pnSpace.lossTime = time.Time{}
+	}
 
 	maxRTT := float64(max(h.rttStats.LatestRTT(), h.rttStats.SmoothedRTT()))
 	lossDelay := time.Duration(timeThreshold * maxRTT)
@@ -692,7 +722,6 @@ func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protoco
 	// Packets sent before this time are deemed lost.
 	lostSendTime := now.Add(-lossDelay)
 
-	priorInFlight := h.bytesInFlight
 	var lostPackets []*packet
 	pnSpace.history.Iterate(func(p *packet) (bool, error) {
 		if p.PacketNumber > pnSpace.largestAcked {
@@ -736,10 +765,10 @@ func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protoco
 				// the bytes in flight need to be reduced no matter if the frames in this packet will be retransmitted
 				h.removeFromBytesInFlight(p)
 				h.queueFramesForRetransmission(p)
-				if !p.IsPathMTUProbePacket {
-					// h.congestion.OnCongestionEvent(priorInFlight, time.Now(), nil, p)
-					h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
-				}
+				// if !p.IsPathMTUProbePacket {
+				// 	// h.congestion.OnCongestionEvent(priorInFlight, time.Now(), nil, p)
+				// 	h.congestion.OnCongestionEvent(p.PacketNumber, p.Length, priorInFlight, time.Now())
+				// }
 				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
 					h.ecnTracker.LostPacket(p.PacketNumber)
 				}
