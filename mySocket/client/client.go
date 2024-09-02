@@ -16,18 +16,18 @@ import (
 	"github.com/mollyy0514/quic-go/qlog"
 )
 
-const SERVER = "127.0.0.1"
+// const SERVER = "127.0.0.1"
 // const SERVER = "192.168.1.79" // MacBook Pro M1 local IP
 // const SERVER = "192.168.1.78" // wmnlab local IP
-// const SERVER = "140.112.20.183" // 249 public IP
-const PORT_UL = 4200
-const PORT_DL = 4201
-const SLEEPTIME = 2
+const SERVER = "140.112.20.183" // 249 public IP
+const PORT_UL = 5290
+const PORT_DL = 5291
+const SLEEPTIME = 0
 
 var serverAddr_ul string = fmt.Sprintf("%s:%d", SERVER, PORT_UL)
 var serverAddr_dl string = fmt.Sprintf("%s:%d", SERVER, PORT_DL)
 
-const PACKET_LEN = 250
+const PACKET_LEN = 1223
 
 func main() {
 	// // set the password for sudo
@@ -234,7 +234,7 @@ func SendPacket(stream quic.Stream, message []byte) {
 
 func Client_send(stream quic.Stream) {
 	// Duration to run the sending process
-	duration := 200 * time.Second
+	duration := 100 * time.Second
 	seq := 1
 	start_time := time.Now()
 	euler := 271828
