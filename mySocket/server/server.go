@@ -23,7 +23,7 @@ import (
 const PACKET_LEN = 1223
 const SERVER = "0.0.0.0"
 const PORT_UL = 5290
-const PORT_DL = 5201
+const PORT_DL = 5291
 const SLEEPTIME = 0
 
 // We start a server echoing data on the first stream the client opens,
