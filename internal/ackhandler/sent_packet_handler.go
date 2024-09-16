@@ -18,7 +18,7 @@ const (
 	// Specified as an RTT multiplier.
 	timeThreshold = 9.0 / 8
 	// Maximum reordering in packets before packet threshold loss detection considers a packet lost.
-	packetThreshold = 3
+	// packetThreshold = 3
 	// Before validating the client's address, the server won't send more than 3x bytes than it received.
 	amplificationFactor = 3
 	// We use Retry packets to derive an RTT estimate. Make sure we don't set the RTT to a super low value yet.
@@ -671,16 +671,16 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossTimeThreshold)
 				}
 			}
-		} else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
-			packetLost = true
-			if !p.skippedPacket {
-				if h.logger.Debug() {
-					h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
-				}
-				if h.tracer != nil && h.tracer.LostPacket != nil {
-					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
-				}
-			}
+		// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
+		// 	packetLost = true
+		// 	if !p.skippedPacket {
+		// 		if h.logger.Debug() {
+		// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
+		// 		}
+		// 		if h.tracer != nil && h.tracer.LostPacket != nil {
+		// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
+		// 		}
+		// 	}
 		} else if pnSpace.lossTime.IsZero() {
 			// Note: This conditional is only entered once per call
 			lossTime := p.SendTime.Add(lossDelay)
@@ -740,17 +740,17 @@ func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protoco
 					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossTimeThreshold)
 				}
 			}
-		} else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
-			packetLost = true
-			lostPackets = append(lostPackets, p)
-			if !p.skippedPacket {
-				if h.logger.Debug() {
-					h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
-				}
-				if h.tracer != nil && h.tracer.LostPacket != nil {
-					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
-				}
-			}
+		// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
+		// 	packetLost = true
+		// 	lostPackets = append(lostPackets, p)
+		// 	if !p.skippedPacket {
+		// 		if h.logger.Debug() {
+		// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
+		// 		}
+		// 		if h.tracer != nil && h.tracer.LostPacket != nil {
+		// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
+		// 		}
+		// 	}
 		} else if pnSpace.lossTime.IsZero() {
 			// Note: This conditional is only entered once per call
 			lossTime := p.SendTime.Add(lossDelay)
