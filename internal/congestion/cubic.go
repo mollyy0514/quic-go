@@ -1,12 +1,11 @@
 package congestion
 
 import (
-	"encoding/csv"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/protocol"
@@ -142,31 +141,17 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	}
 	c.epoch = time.Time{} // Reset time.
 	expectedCwnd := protocol.ByteCount(float32(currentCongestionWindow) * c.beta())
-	
+
 	t := time.Now()
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
-	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_cmd_record.csv"
-	file, err := os.Open(recordFileName)
+	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
+	file, err := os.ReadFile(recordFileName)
 	if err != nil {
 		fmt.Println("Error while reading the file", err)
 	}
-	defer file.Close()
 
-	reader := csv.NewReader(file)
-	var lastRecord []string
-	for {
-		record, err := reader.Read() // Read one row at a time
-		if err != nil {
-			if err.Error() == "EOF" {
-				break // End of file reached
-			}
-			log.Fatal("Error reading record:", err)
-		}
-
-		// Store the current record as the last record
-		lastRecord = record
-	}
-
+	content := string(file)
+	lastRecord := strings.Split(content, ",")
 	thres := 0.5
 	// Check if the file was empty
 	if len(lastRecord) > 0 {
