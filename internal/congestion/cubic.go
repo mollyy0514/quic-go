@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/protocol"
@@ -141,6 +142,7 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	}
 	c.epoch = time.Time{} // Reset time.
 	expectedCwnd := protocol.ByteCount(float32(currentCongestionWindow) * c.beta())
+	
 	t := time.Now()
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_cmd_record.csv"
@@ -165,12 +167,36 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 		lastRecord = record
 	}
 
+	thres := 0.5
 	// Check if the file was empty
 	if len(lastRecord) > 0 {
 		// Print the last record (row)
 		fmt.Println("Last record:", lastRecord)
 		if len(lastRecord) >= 8 {
-			fmt.Println("RECORD:", lastRecord[1], lastRecord[2], lastRecord[3])
+			fmt.Println("RECORD:", lastRecord[0], lastRecord[1], lastRecord[2], lastRecord[3])
+			ts, err := time.Parse("2006-01-02 15:04:05.999999", lastRecord[0])
+			if err != nil {
+				fmt.Println("Error parsing timestamp: ", lastRecord[0], " ", err)
+			}
+			diff := t.Sub(ts)
+			rlf, _ := strconv.ParseFloat(lastRecord[1], 64)
+			lte_ho, _ := strconv.ParseFloat(lastRecord[2], 64)
+			nr_ho, _ := strconv.ParseFloat(lastRecord[3], 64)
+			if rlf >= thres {
+				if diff <= time.Second && diff >= 0 {
+					expectedCwnd = currentCongestionWindow
+				}
+			}
+			if lte_ho >= thres {
+				if diff <= time.Second && diff >= 0 {
+					expectedCwnd = currentCongestionWindow
+				}
+			}
+			if nr_ho >= thres {
+				if diff <= time.Second && diff >= 0 {
+					expectedCwnd = currentCongestionWindow
+				}
+			}
 		}
 	}
 
