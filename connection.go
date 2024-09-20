@@ -493,7 +493,7 @@ func (s *connection) preSetup() {
 }
 
 // run the connection main loop
-func (s *connection) run() error {
+func (s *connection) run(dev string) error {
 	var closeErr closeError
 	defer func() {
 		s.ctxCancel(closeErr.err)
@@ -538,7 +538,7 @@ runLoop:
 			queue := s.undecryptablePacketsToProcess
 			s.undecryptablePacketsToProcess = nil
 			for _, p := range queue {
-				if processed := s.handlePacketImpl(p); processed {
+				if processed := s.handlePacketImpl(dev, p); processed {
 					processedUndecryptablePacket = true
 				}
 				// Don't set timers and send packets if the packet made us close the connection.
@@ -563,7 +563,7 @@ runLoop:
 				// nothing to see here.
 			case <-sendQueueAvailable:
 			case firstPacket := <-s.receivedPackets:
-				wasProcessed := s.handlePacketImpl(firstPacket)
+				wasProcessed := s.handlePacketImpl(dev, firstPacket)
 				// Don't set timers and send packets if the packet made us close the connection.
 				select {
 				case closeErr = <-s.closeChan:
@@ -579,7 +579,7 @@ runLoop:
 					for i := 0; i < numPackets; i++ {
 						select {
 						case p := <-s.receivedPackets:
-							if processed := s.handlePacketImpl(p); processed {
+							if processed := s.handlePacketImpl(dev, p); processed {
 								wasProcessed = true
 							}
 							select {
@@ -605,7 +605,7 @@ runLoop:
 		if timeout := s.sentPacketHandler.GetLossDetectionTimeout(); !timeout.IsZero() && timeout.Before(now) {
 			// This could cause packets to be retransmitted.
 			// Check it before trying to send packets.
-			if err := s.sentPacketHandler.OnLossDetectionTimeout(); err != nil {
+			if err := s.sentPacketHandler.OnLossDetectionTimeout(dev); err != nil {
 				s.closeLocal(err)
 			}
 		}
@@ -789,7 +789,7 @@ func (s *connection) handleHandshakeConfirmed() error {
 	return nil
 }
 
-func (s *connection) handlePacketImpl(rp receivedPacket) bool {
+func (s *connection) handlePacketImpl(dev string, rp receivedPacket) bool {
 	s.sentPacketHandler.ReceivedBytes(rp.Size())
 
 	if wire.IsVersionNegotiationPacket(rp.data) {
@@ -861,7 +861,7 @@ func (s *connection) handlePacketImpl(rp receivedPacket) bool {
 
 			p.data = packetData
 
-			if wasProcessed := s.handleLongHeaderPacket(p, hdr); wasProcessed {
+			if wasProcessed := s.handleLongHeaderPacket(dev, p, hdr); wasProcessed {
 				processed = true
 			}
 			data = rest
@@ -869,7 +869,7 @@ func (s *connection) handlePacketImpl(rp receivedPacket) bool {
 			if counter > 0 {
 				p.buffer.Split()
 			}
-			processed = s.handleShortHeaderPacket(p, destConnID)
+			processed = s.handleShortHeaderPacket(dev, p, destConnID)
 			break
 		}
 	}
@@ -878,7 +878,7 @@ func (s *connection) handlePacketImpl(rp receivedPacket) bool {
 	return processed
 }
 
-func (s *connection) handleShortHeaderPacket(p receivedPacket, destConnID protocol.ConnectionID) bool {
+func (s *connection) handleShortHeaderPacket(dev string, p receivedPacket, destConnID protocol.ConnectionID) bool {
 	var wasQueued bool
 
 	defer func() {
@@ -923,14 +923,14 @@ func (s *connection) handleShortHeaderPacket(p receivedPacket, destConnID protoc
 			)
 		}
 	}
-	if err := s.handleUnpackedShortHeaderPacket(destConnID, pn, data, p.ecn, p.rcvTime, log); err != nil {
+	if err := s.handleUnpackedShortHeaderPacket(dev, destConnID, pn, data, p.ecn, p.rcvTime, log); err != nil {
 		s.closeLocal(err)
 		return false
 	}
 	return true
 }
 
-func (s *connection) handleLongHeaderPacket(p receivedPacket, hdr *wire.Header) bool /* was the packet successfully processed */ {
+func (s *connection) handleLongHeaderPacket(dev string, p receivedPacket, hdr *wire.Header) bool /* was the packet successfully processed */ {
 	var wasQueued bool
 
 	defer func() {
@@ -980,7 +980,7 @@ func (s *connection) handleLongHeaderPacket(p receivedPacket, hdr *wire.Header) 
 		return false
 	}
 
-	if err := s.handleUnpackedLongHeaderPacket(packet, p.ecn, p.rcvTime, p.Size()); err != nil {
+	if err := s.handleUnpackedLongHeaderPacket(dev, packet, p.ecn, p.rcvTime, p.Size()); err != nil {
 		s.closeLocal(err)
 		return false
 	}
@@ -1144,6 +1144,7 @@ func (s *connection) handleVersionNegotiationPacket(p receivedPacket) {
 }
 
 func (s *connection) handleUnpackedLongHeaderPacket(
+	dev string,
 	packet *unpackedPacket,
 	ecn protocol.ECN,
 	rcvTime time.Time,
@@ -1208,7 +1209,7 @@ func (s *connection) handleUnpackedLongHeaderPacket(
 			s.tracer.ReceivedLongHeaderPacket(packet.hdr, packetSize, ecn, frames)
 		}
 	}
-	isAckEliciting, err := s.handleFrames(packet.data, packet.hdr.DestConnectionID, packet.encryptionLevel, log)
+	isAckEliciting, err := s.handleFrames(dev, packet.data, packet.hdr.DestConnectionID, packet.encryptionLevel, log)
 	if err != nil {
 		return err
 	}
@@ -1216,6 +1217,7 @@ func (s *connection) handleUnpackedLongHeaderPacket(
 }
 
 func (s *connection) handleUnpackedShortHeaderPacket(
+	dev string,
 	destConnID protocol.ConnectionID,
 	pn protocol.PacketNumber,
 	data []byte,
@@ -1227,7 +1229,7 @@ func (s *connection) handleUnpackedShortHeaderPacket(
 	s.firstAckElicitingPacketAfterIdleSentTime = time.Time{}
 	s.keepAlivePingSent = false
 
-	isAckEliciting, err := s.handleFrames(data, destConnID, protocol.Encryption1RTT, log)
+	isAckEliciting, err := s.handleFrames(dev, data, destConnID, protocol.Encryption1RTT, log)
 	if err != nil {
 		return err
 	}
@@ -1235,6 +1237,7 @@ func (s *connection) handleUnpackedShortHeaderPacket(
 }
 
 func (s *connection) handleFrames(
+	dev string,
 	data []byte,
 	destConnID protocol.ConnectionID,
 	encLevel protocol.EncryptionLevel,
@@ -1270,7 +1273,7 @@ func (s *connection) handleFrames(
 		if handleErr != nil {
 			continue
 		}
-		if err := s.handleFrame(frame, encLevel, destConnID); err != nil {
+		if err := s.handleFrame(dev, frame, encLevel, destConnID); err != nil {
 			print("ERR FROM handleFrame:", err)
 			if log == nil {
 				return false, err
@@ -1300,7 +1303,7 @@ func (s *connection) handleFrames(
 	return
 }
 
-func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel, destConnID protocol.ConnectionID) error {
+func (s *connection) handleFrame(dev string, f wire.Frame, encLevel protocol.EncryptionLevel, destConnID protocol.ConnectionID) error {
 	var err error
 	wire.LogFrame(s.logger, f, false)
 	switch frame := f.(type) {
@@ -1309,7 +1312,7 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.StreamFrame:
 		err = s.handleStreamFrame(frame)
 	case *wire.AckFrame:
-		err = s.handleAckFrame(frame, encLevel)
+		err = s.handleAckFrame(dev, frame, encLevel)
 	case *wire.FeedbackFrame:
 		err = s.handleFeedbackFrame(frame, encLevel)
 	case *wire.ConnectionCloseFrame:
@@ -1516,8 +1519,8 @@ func (s *connection) handleHandshakeDoneFrame() error {
 	return nil
 }
 
-func (s *connection) handleAckFrame(frame *wire.AckFrame, encLevel protocol.EncryptionLevel) error {
-	acked1RTTPacket, err := s.sentPacketHandler.ReceivedAck(frame, encLevel, s.lastPacketReceivedTime)
+func (s *connection) handleAckFrame(dev string, frame *wire.AckFrame, encLevel protocol.EncryptionLevel) error {
+	acked1RTTPacket, err := s.sentPacketHandler.ReceivedAck(dev, frame, encLevel, s.lastPacketReceivedTime)
 	if err != nil {
 		return err
 	}

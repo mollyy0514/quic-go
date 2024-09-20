@@ -13,7 +13,8 @@ type SentPacketHandler interface {
 	SentPacket(t time.Time, pn, largestAcked protocol.PacketNumber, streamFrames []StreamFrame, frames []Frame, encLevel protocol.EncryptionLevel, ecn protocol.ECN, size protocol.ByteCount, isPathMTUProbePacket bool)
 	// ReceivedAck processes an ACK frame.
 	// It does not store a copy of the frame.
-	ReceivedAck(f *wire.AckFrame, encLevel protocol.EncryptionLevel, rcvTime time.Time) (bool /* 1-RTT packet acked */, error)
+	// ReceivedAck(f *wire.AckFrame, encLevel protocol.EncryptionLevel, rcvTime time.Time) (bool /* 1-RTT packet acked */, error)
+	ReceivedAck(dev string, f *wire.AckFrame, encLevel protocol.EncryptionLevel, rcvTime time.Time) (bool /* 1-RTT packet acked */, error)
 	ReceivedBytes(protocol.ByteCount)
 	DropPackets(protocol.EncryptionLevel)
 	ResetForRetry(rcvTime time.Time) error
@@ -34,7 +35,7 @@ type SentPacketHandler interface {
 	PopPacketNumber(protocol.EncryptionLevel) protocol.PacketNumber
 
 	GetLossDetectionTimeout() time.Time
-	OnLossDetectionTimeout() error
+	OnLossDetectionTimeout(dev string) error
 }
 
 type sentPacketTracker interface {

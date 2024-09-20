@@ -25,10 +25,10 @@ import (
 // allows mocking of quic.Listen and quic.ListenAddr
 var (
 	quicListen = func(conn net.PacketConn, tlsConf *tls.Config, config *quic.Config) (QUICEarlyListener, error) {
-		return quic.ListenEarly(conn, tlsConf, config)
+		return quic.ListenEarly("DEFAULT", conn, tlsConf, config)
 	}
 	quicListenAddr = func(addr string, tlsConf *tls.Config, config *quic.Config) (QUICEarlyListener, error) {
-		return quic.ListenAddrEarly(addr, tlsConf, config)
+		return quic.ListenAddrEarly("DEFAULT", addr, tlsConf, config)
 	}
 	errPanicked = errors.New("panicked")
 )

@@ -1,7 +1,11 @@
 package congestion
 
 import (
+	"encoding/csv"
+	"fmt"
+	"log"
 	"math"
+	"os"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/protocol"
@@ -127,7 +131,7 @@ func (c *Cubic) OnApplicationLimited() {
 // CongestionWindowAfterPacketLoss computes a new congestion window to use after
 // a loss event. Returns the new congestion window in packets. The new
 // congestion window is a multiplicative decrease of our current window.
-func (c *Cubic) CongestionWindowAfterPacketLoss(currentCongestionWindow protocol.ByteCount) protocol.ByteCount {
+func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWindow protocol.ByteCount) protocol.ByteCount {
 	if currentCongestionWindow+maxDatagramSize < c.lastMaxCongestionWindow {
 		// We never reached the old max, so assume we are competing with another
 		// flow. Use our extra back off factor to allow the other flow to go up.
@@ -136,7 +140,41 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(currentCongestionWindow protocol
 		c.lastMaxCongestionWindow = currentCongestionWindow
 	}
 	c.epoch = time.Time{} // Reset time.
-	return protocol.ByteCount(float32(currentCongestionWindow) * c.beta())
+	expectedCwnd := protocol.ByteCount(float32(currentCongestionWindow) * c.beta())
+	t := time.Now()
+	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
+	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_cmd_record.csv"
+	file, err := os.Open(recordFileName)
+	if err != nil {
+		fmt.Println("Error while reading the file", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	var lastRecord []string
+	for {
+		record, err := reader.Read() // Read one row at a time
+		if err != nil {
+			if err.Error() == "EOF" {
+				break // End of file reached
+			}
+			log.Fatal("Error reading record:", err)
+		}
+
+		// Store the current record as the last record
+		lastRecord = record
+	}
+
+	// Check if the file was empty
+	if len(lastRecord) > 0 {
+		// Print the last record (row)
+		fmt.Println("Last record:", lastRecord)
+		if len(lastRecord) >= 8 {
+			fmt.Println("RECORD:", lastRecord[1], lastRecord[2], lastRecord[3])
+		}
+	}
+
+	return expectedCwnd
 }
 
 // CongestionWindowAfterAck computes a new congestion window to use after a received ACK.

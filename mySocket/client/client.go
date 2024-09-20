@@ -16,10 +16,10 @@ import (
 	"github.com/mollyy0514/quic-go/qlog"
 )
 
-// const SERVER = "127.0.0.1"
+const SERVER = "127.0.0.1"
 // const SERVER = "192.168.1.79" // MacBook Pro M1 local IP
 // const SERVER = "192.168.1.78" // wmnlab local IP
-const SERVER = "140.112.20.183" // 249 public IP
+// const SERVER = "140.112.20.183" // 249 public IP
 const PORT_UL = 5290
 const PORT_DL = 5291
 const SLEEPTIME = 0
@@ -49,7 +49,8 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3 sec handshake timeout
 				defer cancel()
 				// connect to server IP. Session is like the socket of TCP/IP
-				session_ul, err := quic.DialAddr(ctx, serverAddr_ul, tlsConfig, &quicConfig)
+				dev := "DEFAULT"
+				session_ul, err := quic.DialAddr(dev, ctx, serverAddr_ul, tlsConfig, &quicConfig)
 				if err != nil {
 					fmt.Println("err: ", err)
 				}
@@ -75,7 +76,8 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) // 3 sec handshake timeout
 				defer cancel()
 				// connect to server IP. Session is like the socket of TCP/IP
-				session_dl, err := quic.DialAddr(ctx, serverAddr_dl, tlsConfig, &quicConfig)
+				dev := "DEFAULT"
+				session_dl, err := quic.DialAddr(dev, ctx, serverAddr_dl, tlsConfig, &quicConfig)
 				if err != nil {
 					fmt.Println("err: ", err)
 				}

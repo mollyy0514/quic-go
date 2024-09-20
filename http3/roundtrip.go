@@ -100,7 +100,7 @@ type RoundTripper struct {
 	// connections for requests.
 	// If Dial is nil, a UDPConn will be created at the first request
 	// and will be reused for subsequent connections to other servers.
-	Dial func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error)
+	Dial func(dev string, ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error)
 
 	// MaxResponseHeaderBytes specifies a limit on how many response bytes are
 	// allowed in the server's response header.
@@ -155,7 +155,7 @@ func (r *RoundTripper) RoundTripOpt(req *http.Request, opt RoundTripOpt) (*http.
 	}
 
 	hostname := authorityAddr("https", hostnameFromRequest(req))
-	cl, isReused, err := r.getClient(hostname, opt.OnlyCachedConn)
+	cl, isReused, err := r.getClient("DEFAULT", hostname, opt.OnlyCachedConn)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (r *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r.RoundTripOpt(req, RoundTripOpt{})
 }
 
-func (r *RoundTripper) getClient(hostname string, onlyCached bool) (rtc *roundTripCloserWithCount, isReused bool, err error) {
+func (r *RoundTripper) getClient(dev string, hostname string, onlyCached bool) (rtc *roundTripCloserWithCount, isReused bool, err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -196,6 +196,7 @@ func (r *RoundTripper) getClient(hostname string, onlyCached bool) (rtc *roundTr
 			newCl = r.newClient
 		}
 		dial := r.Dial
+		dev := "DEFAULT"
 		if dial == nil {
 			if r.transport == nil {
 				udpConn, err := net.ListenUDP("udp", nil)
@@ -204,7 +205,7 @@ func (r *RoundTripper) getClient(hostname string, onlyCached bool) (rtc *roundTr
 				}
 				r.transport = &quic.Transport{Conn: udpConn}
 			}
-			dial = r.makeDialer()
+			dial = r.makeDialer(dev)
 		}
 		c, err := newCl(
 			hostname,
@@ -293,13 +294,13 @@ func isNotToken(r rune) bool {
 }
 
 // makeDialer makes a QUIC dialer using r.udpConn.
-func (r *RoundTripper) makeDialer() func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
-	return func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
+func (r *RoundTripper) makeDialer(dev string) func(dev string, ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
+	return func(dev string, ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return nil, err
 		}
-		return r.transport.DialEarly(ctx, udpAddr, tlsCfg, cfg)
+		return r.transport.DialEarly(dev, ctx, udpAddr, tlsCfg, cfg)
 	}
 }
 

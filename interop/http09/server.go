@@ -73,7 +73,7 @@ func (s *Server) ListenAndServe() error {
 	if s.ForceRetry {
 		tr.VerifySourceAddress = func(net.Addr) bool { return true }
 	}
-	ln, err := tr.ListenEarly(tlsConf, s.QuicConfig)
+	ln, err := tr.ListenEarly("DEFAULT", tlsConf, s.QuicConfig)
 	if err != nil {
 		return err
 	}

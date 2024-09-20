@@ -32,7 +32,7 @@ func main() {
 
 // Start a server that echos all data on the first stream opened by the client
 func echoServer() error {
-	listener, err := quic.ListenAddr(addr, generateTLSConfig(), nil)
+	listener, err := quic.ListenAddr("DEFAULT", addr, generateTLSConfig(), nil)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func clientMain() error {
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
 	}
-	conn, err := quic.DialAddr(context.Background(), addr, tlsConf, nil)
+	conn, err := quic.DialAddr("DEFAULT", context.Background(), addr, tlsConf, nil)
 	if err != nil {
 		return err
 	}

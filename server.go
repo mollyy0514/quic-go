@@ -39,7 +39,7 @@ type quicConn interface {
 	EarlyConnection
 	earlyConnReady() <-chan struct{}
 	handlePacket(receivedPacket)
-	run() error
+	run(string) error
 	destroy(error)
 	closeWithTransportError(TransportErrorCode)
 }
@@ -56,6 +56,7 @@ type rejectedPacket struct {
 
 // A Listener of QUIC
 type baseServer struct {
+	dev string
 	disableVersionNegotiation bool
 	acceptEarlyConns          bool
 
@@ -169,7 +170,7 @@ func (l *EarlyListener) Addr() net.Addr {
 
 // ListenAddr creates a QUIC server listening on a given address.
 // See Listen for more details.
-func ListenAddr(addr string, tlsConf *tls.Config, config *Config) (*Listener, error) {
+func ListenAddr(dev string, addr string, tlsConf *tls.Config, config *Config) (*Listener, error) {
 	conn, err := listenUDP(addr)
 	if err != nil {
 		return nil, err
@@ -178,11 +179,11 @@ func ListenAddr(addr string, tlsConf *tls.Config, config *Config) (*Listener, er
 		Conn:        conn,
 		createdConn: true,
 		isSingleUse: true,
-	}).Listen(tlsConf, config)
+	}).Listen(dev, tlsConf, config)
 }
 
 // ListenAddrEarly works like ListenAddr, but it returns connections before the handshake completes.
-func ListenAddrEarly(addr string, tlsConf *tls.Config, config *Config) (*EarlyListener, error) {
+func ListenAddrEarly(dev string, addr string, tlsConf *tls.Config, config *Config) (*EarlyListener, error) {
 	conn, err := listenUDP(addr)
 	if err != nil {
 		return nil, err
@@ -191,7 +192,7 @@ func ListenAddrEarly(addr string, tlsConf *tls.Config, config *Config) (*EarlyLi
 		Conn:        conn,
 		createdConn: true,
 		isSingleUse: true,
-	}).ListenEarly(tlsConf, config)
+	}).ListenEarly(dev, tlsConf, config)
 }
 
 func listenUDP(addr string) (*net.UDPConn, error) {
@@ -216,18 +217,19 @@ func listenUDP(addr string) (*net.UDPConn, error) {
 // which offers configuration options for a more fine-grained control of the connection establishment,
 // including reusing the underlying UDP socket for outgoing QUIC connections.
 // When closing a listener created with Listen, all established QUIC connections will be closed immediately.
-func Listen(conn net.PacketConn, tlsConf *tls.Config, config *Config) (*Listener, error) {
+func Listen(dev string, conn net.PacketConn, tlsConf *tls.Config, config *Config) (*Listener, error) {
 	tr := &Transport{Conn: conn, isSingleUse: true}
-	return tr.Listen(tlsConf, config)
+	return tr.Listen(dev, tlsConf, config)
 }
 
 // ListenEarly works like Listen, but it returns connections before the handshake completes.
-func ListenEarly(conn net.PacketConn, tlsConf *tls.Config, config *Config) (*EarlyListener, error) {
+func ListenEarly(dev string, conn net.PacketConn, tlsConf *tls.Config, config *Config) (*EarlyListener, error) {
 	tr := &Transport{Conn: conn, isSingleUse: true}
-	return tr.ListenEarly(tlsConf, config)
+	return tr.ListenEarly(dev, tlsConf, config)
 }
 
 func newServer(
+	dev string,
 	conn rawConn,
 	connHandler packetHandlerManager,
 	connIDGenerator ConnectionIDGenerator,
@@ -242,6 +244,7 @@ func newServer(
 	acceptEarly bool,
 ) *baseServer {
 	s := &baseServer{
+		dev:					   dev,
 		conn:                      conn,
 		tlsConf:                   tlsConf,
 		config:                    config,
@@ -683,7 +686,7 @@ func (s *baseServer) handleInitialImpl(p receivedPacket, hdr *wire.Header) error
 		delete(s.zeroRTTQueues, hdr.DestConnectionID)
 	}
 
-	go conn.run()
+	go conn.run(s.dev)
 	go func() {
 		if completed := s.handleNewConn(conn); !completed {
 			return

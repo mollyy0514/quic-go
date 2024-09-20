@@ -127,8 +127,8 @@ type Transport struct {
 // Listen starts listening for incoming QUIC connections.
 // There can only be a single listener on any net.PacketConn.
 // Listen may only be called again after the current Listener was closed.
-func (t *Transport) Listen(tlsConf *tls.Config, conf *Config) (*Listener, error) {
-	s, err := t.createServer(tlsConf, conf, false)
+func (t *Transport) Listen(dev string, tlsConf *tls.Config, conf *Config) (*Listener, error) {
+	s, err := t.createServer(dev, tlsConf, conf, false)
 	if err != nil {
 		return nil, err
 	}
@@ -138,15 +138,15 @@ func (t *Transport) Listen(tlsConf *tls.Config, conf *Config) (*Listener, error)
 // ListenEarly starts listening for incoming QUIC connections.
 // There can only be a single listener on any net.PacketConn.
 // Listen may only be called again after the current Listener was closed.
-func (t *Transport) ListenEarly(tlsConf *tls.Config, conf *Config) (*EarlyListener, error) {
-	s, err := t.createServer(tlsConf, conf, true)
+func (t *Transport) ListenEarly(dev string, tlsConf *tls.Config, conf *Config) (*EarlyListener, error) {
+	s, err := t.createServer(dev, tlsConf, conf, true)
 	if err != nil {
 		return nil, err
 	}
 	return &EarlyListener{baseServer: s}, nil
 }
 
-func (t *Transport) createServer(tlsConf *tls.Config, conf *Config, allow0RTT bool) (*baseServer, error) {
+func (t *Transport) createServer(dev string, tlsConf *tls.Config, conf *Config, allow0RTT bool) (*baseServer, error) {
 	if tlsConf == nil {
 		return nil, errors.New("quic: tls.Config not set")
 	}
@@ -165,6 +165,7 @@ func (t *Transport) createServer(tlsConf *tls.Config, conf *Config, allow0RTT bo
 		return nil, err
 	}
 	s := newServer(
+		dev,
 		t.conn,
 		t.handlerMap,
 		t.connIDGenerator,
@@ -183,16 +184,16 @@ func (t *Transport) createServer(tlsConf *tls.Config, conf *Config, allow0RTT bo
 }
 
 // Dial dials a new connection to a remote host (not using 0-RTT).
-func (t *Transport) Dial(ctx context.Context, addr net.Addr, tlsConf *tls.Config, conf *Config) (Connection, error) {
-	return t.dial(ctx, addr, "", tlsConf, conf, false)
+func (t *Transport) Dial(dev string, ctx context.Context, addr net.Addr, tlsConf *tls.Config, conf *Config) (Connection, error) {
+	return t.dial(dev, ctx, addr, "", tlsConf, conf, false)
 }
 
 // DialEarly dials a new connection, attempting to use 0-RTT if possible.
-func (t *Transport) DialEarly(ctx context.Context, addr net.Addr, tlsConf *tls.Config, conf *Config) (EarlyConnection, error) {
-	return t.dial(ctx, addr, "", tlsConf, conf, true)
+func (t *Transport) DialEarly(dev string, ctx context.Context, addr net.Addr, tlsConf *tls.Config, conf *Config) (EarlyConnection, error) {
+	return t.dial(dev, ctx, addr, "", tlsConf, conf, true)
 }
 
-func (t *Transport) dial(ctx context.Context, addr net.Addr, host string, tlsConf *tls.Config, conf *Config, use0RTT bool) (EarlyConnection, error) {
+func (t *Transport) dial(dev string, ctx context.Context, addr net.Addr, host string, tlsConf *tls.Config, conf *Config, use0RTT bool) (EarlyConnection, error) {
 	if err := validateConfig(conf); err != nil {
 		return nil, err
 	}
@@ -206,7 +207,7 @@ func (t *Transport) dial(ctx context.Context, addr net.Addr, host string, tlsCon
 	}
 	tlsConf = tlsConf.Clone()
 	setTLSConfigServerName(tlsConf, addr, host)
-	return dial(ctx, newSendConn(t.conn, addr, packetInfo{}, utils.DefaultLogger), t.connIDGenerator, t.handlerMap, tlsConf, conf, onClose, use0RTT)
+	return dial(dev, ctx, newSendConn(t.conn, addr, packetInfo{}, utils.DefaultLogger), t.connIDGenerator, t.handlerMap, tlsConf, conf, onClose, use0RTT)
 }
 
 func (t *Transport) init(allowZeroLengthConnIDs bool) error {

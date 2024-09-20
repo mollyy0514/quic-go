@@ -40,7 +40,7 @@ var defaultQuicConfig = &quic.Config{
 	KeepAlivePeriod:    10 * time.Second,
 }
 
-type dialFunc func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error)
+type dialFunc func(dev string, ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error)
 
 var dialAddr dialFunc = quic.DialAddrEarly
 
@@ -129,9 +129,9 @@ func (c *client) dial(ctx context.Context) error {
 	var err error
 	var conn quic.EarlyConnection
 	if c.dialer != nil {
-		conn, err = c.dialer(ctx, c.hostname, c.tlsConf, c.config)
+		conn, err = c.dialer("DEFAULT", ctx, c.hostname, c.tlsConf, c.config)
 	} else {
-		conn, err = dialAddr(ctx, c.hostname, c.tlsConf, c.config)
+		conn, err = dialAddr("DEFAULT", ctx, c.hostname, c.tlsConf, c.config)
 	}
 	if err != nil {
 		return err

@@ -146,8 +146,9 @@ func EchoQuicServer(host string, quicPort int, ul bool) error {
 			return qlog.NewConnectionTracer(f, p, connID)
 		},
 	}
+	connDev := "DEFAULT"
 	// ListenAddrEarly supports 0rtt
-	listener, err := quic.ListenAddr(fmt.Sprintf("%s:%d", host, quicPort), GenerateTLSConfig(nowTime, quicPort), &quicConfig)
+	listener, err := quic.ListenAddr(connDev, fmt.Sprintf("%s:%d", host, quicPort), GenerateTLSConfig(nowTime, quicPort), &quicConfig)
 	if err != nil {
 		return err
 	}

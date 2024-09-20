@@ -353,7 +353,7 @@ var _ = Describe("Client", func() {
 
 			config := &Config{Tracer: config.Tracer, Versions: []protocol.Version{protocol.Version1}}
 			tracer.EXPECT().StartedConnection(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
-			_, err := DialAddr(context.Background(), "localhost:7890", tlsConf, config)
+			_, err := DialAddr("DEFAULT", context.Background(), "localhost:7890", tlsConf, config)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(counter).To(Equal(2))
 		})
