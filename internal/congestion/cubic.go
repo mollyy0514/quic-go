@@ -185,6 +185,16 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 		}
 	}
 
+	cwndFileDir := "/home/wmnlab/temp/" + dev + "_cwnd.txt"
+	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening cwnd file:", err)
+	}
+	_, err = cwndFile.WriteString(strconv.FormatInt(int64(expectedCwnd), 10))
+	if err != nil {
+		fmt.Println("Error writing to cwnd file:", err)
+	}
+
 	return expectedCwnd
 }
 
