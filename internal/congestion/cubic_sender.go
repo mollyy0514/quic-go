@@ -213,13 +213,13 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 		}
 
 		content := string(file)
-		lastRecord := strings.Split(content, ",")
+		lastRecord := strings.Split(content, "@")
 		thres := 0.5
 		// Check if the file was empty
 		if len(lastRecord) > 0 {
 			// Print the last record (row)
 			fmt.Println("Last record:", lastRecord)
-			if len(lastRecord) >= 8 {
+			if len(lastRecord) >= 6 {
 				fmt.Println("RECORD:", lastRecord[0], lastRecord[1], lastRecord[2], lastRecord[3])
 				ts, err := time.Parse("2006-01-02 15:04:05.999999", lastRecord[0])
 				if err != nil {
@@ -252,7 +252,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 		if err != nil {
 			fmt.Println("Error opening cwnd file:", err)
 		}
-		_, err = cwndFile.WriteString(strconv.FormatInt(int64(targetCongestionWindow), 10))
+		_, err = cwndFile.WriteString(strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
 		if err != nil {
 			fmt.Println("Error writing to cwnd file:", err)
 		}

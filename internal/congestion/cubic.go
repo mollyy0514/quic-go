@@ -157,7 +157,7 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	if len(lastRecord) > 0 {
 		// Print the last record (row)
 		fmt.Println("Last record:", lastRecord)
-		if len(lastRecord) >= 8 {
+		if len(lastRecord) >= 6 {
 			fmt.Println("RECORD:", lastRecord[0], lastRecord[1], lastRecord[2], lastRecord[3])
 			ts, err := time.Parse("2006-01-02 15:04:05.999999", lastRecord[0])
 			if err != nil {
@@ -190,7 +190,7 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	if err != nil {
 		fmt.Println("Error opening cwnd file:", err)
 	}
-	_, err = cwndFile.WriteString(strconv.FormatInt(int64(expectedCwnd), 10))
+	_, err = cwndFile.WriteString(strconv.FormatInt(int64(currentCongestionWindow), 10) + " -> " + strconv.FormatInt(int64(expectedCwnd), 10) + "\n")
 	if err != nil {
 		fmt.Println("Error writing to cwnd file:", err)
 	}
@@ -262,16 +262,6 @@ func (c *Cubic) CongestionWindowAfterAck(
 	// congestion_window, use highest (fastest).
 	if targetCongestionWindow < c.estimatedTCPcongestionWindow {
 		targetCongestionWindow = c.estimatedTCPcongestionWindow
-	}
-
-	cwndFileDir := "/home/wmnlab/temp/" + "cwnd.txt"
-	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("Error opening cwnd file:", err)
-	}
-	_, err = cwndFile.WriteString(strconv.FormatInt(int64(targetCongestionWindow), 10))
-	if err != nil {
-		fmt.Println("Error writing to cwnd file:", err)
 	}
 
 	return targetCongestionWindow
