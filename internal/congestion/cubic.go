@@ -185,7 +185,7 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 		}
 	}
 
-	cwndFileDir := "/home/wmnlab/temp/" + dev + "_cwnd.txt"
+	cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd.txt"
 	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Error opening cwnd file:", err)
@@ -263,6 +263,17 @@ func (c *Cubic) CongestionWindowAfterAck(
 	if targetCongestionWindow < c.estimatedTCPcongestionWindow {
 		targetCongestionWindow = c.estimatedTCPcongestionWindow
 	}
+
+	cwndFileDir := "/home/wmnlab/temp/" + "cwnd.txt"
+	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening cwnd file:", err)
+	}
+	_, err = cwndFile.WriteString(strconv.FormatInt(int64(targetCongestionWindow), 10))
+	if err != nil {
+		fmt.Println("Error writing to cwnd file:", err)
+	}
+
 	return targetCongestionWindow
 }
 
