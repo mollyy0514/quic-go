@@ -2,6 +2,9 @@ package congestion
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/protocol"
@@ -198,7 +201,63 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 	c.maybeTraceStateChange(logging.CongestionStateRecovery)
 
 	if c.reno {
-		c.congestionWindow = protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
+		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
+
+		currentCongestionWindow := c.congestionWindow
+		t := time.Now()
+		ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
+		recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
+		file, err := os.ReadFile(recordFileName)
+		if err != nil {
+			fmt.Println("Error while reading the file", err)
+		}
+
+		content := string(file)
+		lastRecord := strings.Split(content, ",")
+		thres := 0.5
+		// Check if the file was empty
+		if len(lastRecord) > 0 {
+			// Print the last record (row)
+			fmt.Println("Last record:", lastRecord)
+			if len(lastRecord) >= 8 {
+				fmt.Println("RECORD:", lastRecord[0], lastRecord[1], lastRecord[2], lastRecord[3])
+				ts, err := time.Parse("2006-01-02 15:04:05.999999", lastRecord[0])
+				if err != nil {
+					fmt.Println("Error parsing timestamp: ", lastRecord[0], " ", err)
+				}
+				diff := t.Sub(ts)
+				rlf, _ := strconv.ParseFloat(lastRecord[1], 64)
+				lte_ho, _ := strconv.ParseFloat(lastRecord[2], 64)
+				nr_ho, _ := strconv.ParseFloat(lastRecord[3], 64)
+				if rlf >= thres {
+					if diff <= time.Second && diff >= 0 {
+						targetCongestionWindow = currentCongestionWindow
+					}
+				}
+				if lte_ho >= thres {
+					if diff <= time.Second && diff >= 0 {
+						targetCongestionWindow = currentCongestionWindow
+					}
+				}
+				if nr_ho >= thres {
+					if diff <= time.Second && diff >= 0 {
+						targetCongestionWindow = currentCongestionWindow
+					}
+				}
+			}
+		}
+
+		cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd.txt"
+		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening cwnd file:", err)
+		}
+		_, err = cwndFile.WriteString(strconv.FormatInt(int64(targetCongestionWindow), 10))
+		if err != nil {
+			fmt.Println("Error writing to cwnd file:", err)
+		}
+
+		c.congestionWindow = targetCongestionWindow
 	} else {
 		c.congestionWindow = c.cubic.CongestionWindowAfterPacketLoss(dev, c.congestionWindow)
 	}
@@ -244,6 +303,16 @@ func (c *cubicSender) maybeIncreaseCwnd(
 		if c.numAckedPackets >= uint64(c.congestionWindow/c.maxDatagramSize) {
 			c.congestionWindow += c.maxDatagramSize
 			c.numAckedPackets = 0
+		}
+
+		cwndFileDir := "/home/wmnlab/temp/" + "cwnd.txt"
+		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening cwnd file:", err)
+		}
+		_, err = cwndFile.WriteString(strconv.FormatInt(int64(c.congestionWindow), 10))
+		if err != nil {
+			fmt.Println("Error writing to cwnd file:", err)
 		}
 	} else {
 		c.congestionWindow = min(c.maxCongestionWindow(), c.cubic.CongestionWindowAfterAck(ackedBytes, c.congestionWindow, c.rttStats.MinRTT(), eventTime))
