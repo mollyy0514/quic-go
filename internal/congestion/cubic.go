@@ -185,10 +185,14 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 		}
 	}
 
-	cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd.txt"
+	cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd_s.txt"
 	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("Error opening cwnd file:", err)
+		cwndFileDir := "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
+		cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening both cwnd file:", err)
+		}
 	}
 	_, err = cwndFile.WriteString(strconv.FormatInt(int64(currentCongestionWindow), 10) + " -> " + strconv.FormatInt(int64(expectedCwnd), 10) + "\n")
 	if err != nil {

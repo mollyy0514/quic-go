@@ -247,10 +247,14 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 			}
 		}
 
-		cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd.txt"
+		cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Println("Error opening cwnd file:", err)
+			cwndFileDir := "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
+			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening both cwnd file:", err)
+			}
 		}
 		_, err = cwndFile.WriteString(strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
 		if err != nil {
@@ -303,16 +307,6 @@ func (c *cubicSender) maybeIncreaseCwnd(
 		if c.numAckedPackets >= uint64(c.congestionWindow/c.maxDatagramSize) {
 			c.congestionWindow += c.maxDatagramSize
 			c.numAckedPackets = 0
-		}
-
-		cwndFileDir := "/home/wmnlab/temp/" + "cwnd.txt"
-		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println("Error opening cwnd file:", err)
-		}
-		_, err = cwndFile.WriteString(strconv.FormatInt(int64(c.congestionWindow), 10))
-		if err != nil {
-			fmt.Println("Error writing to cwnd file:", err)
 		}
 	} else {
 		c.congestionWindow = min(c.maxCongestionWindow(), c.cubic.CongestionWindowAfterAck(ackedBytes, c.congestionWindow, c.rttStats.MinRTT(), eventTime))
