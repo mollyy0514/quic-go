@@ -250,7 +250,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 		cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			cwndFileDir := "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
+			cwndFileDir = "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
 			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				fmt.Println("Error opening both cwnd file:", err)
