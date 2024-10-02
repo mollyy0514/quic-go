@@ -153,7 +153,7 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	content := string(file)
 	latestRecord := strings.Split(content, ",")
 	thres := 0.5
-	var latestRecordTime string
+	latestRecordTime := t.Format("2006-01-02 15:04:05.999999")
 	var ho_state int
 	// Check if the file was empty
 	if len(latestRecord) > 0 {
@@ -162,7 +162,6 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 		if len(latestRecord) >= 6 {
 			fmt.Println("RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 			ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
-			latestRecordTime = latestRecord[0]
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
@@ -175,18 +174,21 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 					expectedCwnd = currentCongestionWindow
 				}
 				ho_state = 1
+				latestRecordTime = latestRecord[0]
 			}
 			if lte_cls >= thres {
 				if diff <= time.Second && diff >= 0 {
 					expectedCwnd = currentCongestionWindow
 				}
 				ho_state = 2
+				latestRecordTime = latestRecord[0]
 			}
 			if nr_cls >= thres {
 				if diff <= time.Second && diff >= 0 {
 					expectedCwnd = currentCongestionWindow
 				}
 				ho_state = 3
+				latestRecordTime = latestRecord[0]
 			}
 		}
 	}
