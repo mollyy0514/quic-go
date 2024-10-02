@@ -22,6 +22,13 @@ const (
 	initialCongestionWindow    = 32
 )
 
+const (
+	None   = iota // 0
+	RLF           // 1
+	LTE_HO        // 2
+	NR_HO         // 3
+)
+
 type cubicSender struct {
 	hybridSlowStart HybridSlowStart
 	rttStats        *utils.RTTStats
@@ -213,36 +220,42 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 		}
 
 		content := string(file)
-		lastRecord := strings.Split(content, "@")
+		latestRecord := strings.Split(content, ",")
 		thres := 0.5
+		var latestRecordTime string
+		var ho_state int
 		// Check if the file was empty
-		if len(lastRecord) > 0 {
+		if len(latestRecord) > 0 {
 			// Print the last record (row)
-			fmt.Println("Last record:", lastRecord)
-			if len(lastRecord) >= 6 {
-				fmt.Println("RECORD:", lastRecord[0], lastRecord[1], lastRecord[2], lastRecord[3])
-				ts, err := time.Parse("2006-01-02 15:04:05.999999", lastRecord[0])
+			fmt.Println("Latest record:", latestRecord)
+			if len(latestRecord) >= 6 {
+				fmt.Println("RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
+				ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
+				latestRecordTime = latestRecord[0]
 				if err != nil {
-					fmt.Println("Error parsing timestamp: ", lastRecord[0], " ", err)
+					fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 				}
 				diff := t.Sub(ts)
-				rlf, _ := strconv.ParseFloat(lastRecord[1], 64)
-				lte_ho, _ := strconv.ParseFloat(lastRecord[2], 64)
-				nr_ho, _ := strconv.ParseFloat(lastRecord[3], 64)
+				rlf, _ := strconv.ParseFloat(latestRecord[1], 64)
+				lte_cls, _ := strconv.ParseFloat(latestRecord[2], 64)
+				nr_cls, _ := strconv.ParseFloat(latestRecord[3], 64)
 				if rlf >= thres {
 					if diff <= time.Second && diff >= 0 {
 						targetCongestionWindow = currentCongestionWindow
 					}
+					ho_state = 1
 				}
-				if lte_ho >= thres {
+				if lte_cls >= thres {
 					if diff <= time.Second && diff >= 0 {
 						targetCongestionWindow = currentCongestionWindow
 					}
+					ho_state = 2
 				}
-				if nr_ho >= thres {
+				if nr_cls >= thres {
 					if diff <= time.Second && diff >= 0 {
 						targetCongestionWindow = currentCongestionWindow
 					}
+					ho_state = 3
 				}
 			}
 		}
@@ -256,7 +269,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 				fmt.Println("Error opening both cwnd file:", err)
 			}
 		}
-		_, err = cwndFile.WriteString(strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
+		_, err = cwndFile.WriteString(latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
 		if err != nil {
 			fmt.Println("Error writing to cwnd file:", err)
 		}
@@ -273,6 +286,25 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 	// reset packet count from congestion avoidance mode. We start
 	// counting again when we're out of recovery.
 	c.numAckedPackets = 0
+}
+
+// Function to print out the state based on the integer value
+func hoState(state int) string {
+	var stateString string
+	switch state {
+	case None:
+		stateString = "none"
+	case RLF:
+		stateString = "rlf"
+	case LTE_HO:
+		stateString = "lte_ho"
+	case NR_HO:
+		stateString = "nr_ho"
+	default:
+		stateString = "invalid state"
+	}
+	
+	return stateString
 }
 
 // Called when we receive an ack. Normal TCP tracks how many packets one ack
