@@ -158,17 +158,16 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	// Check if the file was empty
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
-		fmt.Println("Last record:", latestRecord)
 		if len(latestRecord) >= 6 {
-			fmt.Println("RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
+			fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
 			ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
 			diff := t.Sub(ts)
-			rlf, _ := strconv.ParseFloat(latestRecord[1], 64)
-			lte_cls, _ := strconv.ParseFloat(latestRecord[2], 64)
-			nr_cls, _ := strconv.ParseFloat(latestRecord[3], 64)
+			rlf, _ := strconv.ParseFloat(latestRecord[2], 64)
+			lte_ho, _ := strconv.ParseFloat(latestRecord[3], 64)
+			nr_ho, _ := strconv.ParseFloat(latestRecord[4], 64)
 			if rlf >= thres {
 				if diff <= time.Second && diff >= 0 {
 					expectedCwnd = currentCongestionWindow
@@ -176,14 +175,14 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 				ho_state = 1
 				latestRecordTime = latestRecord[0]
 			}
-			if lte_cls >= thres {
+			if lte_ho >= thres {
 				if diff <= time.Second && diff >= 0 {
 					expectedCwnd = currentCongestionWindow
 				}
 				ho_state = 2
 				latestRecordTime = latestRecord[0]
 			}
-			if nr_cls >= thres {
+			if nr_ho >= thres {
 				if diff <= time.Second && diff >= 0 {
 					expectedCwnd = currentCongestionWindow
 				}
