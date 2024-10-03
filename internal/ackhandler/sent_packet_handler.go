@@ -346,6 +346,7 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 				ackDelay = min(ack.DelayTime, h.rttStats.MaxAckDelay())
 			}
 			h.rttStats.UpdateRTT(rcvTime.Sub(p.SendTime), ackDelay, rcvTime)
+			fmt.Printf("RECEIVED ACK UPDATED RTT: %s, %s, %s, %s, %s\n", rcvTime, p.SendTime, rcvTime.Sub(p.SendTime), h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
 			if h.logger.Debug() {
 				h.logger.Debugf("\tupdated RTT: %s (σ: %s)", h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
 			}
@@ -1002,6 +1003,7 @@ func (h *sentPacketHandler) ResetForRetry(now time.Time) error {
 	if h.ptoCount == 0 {
 		// Don't set the RTT to a value lower than 5ms here.
 		h.rttStats.UpdateRTT(max(minRTTAfterRetry, now.Sub(firstPacketSendTime)), 0, now)
+		fmt.Printf("RESET FOR RETRY UPDATED RTT: %s, %s, %s, %s, %s\n", now, firstPacketSendTime, "0", h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
 		if h.logger.Debug() {
 			h.logger.Debugf("\tupdated RTT: %s (σ: %s)", h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
 		}
