@@ -3,6 +3,7 @@ package ackhandler
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/mollyy0514/quic-go/internal/congestion"
@@ -130,7 +131,7 @@ func newSentPacketHandler(
 		tracer:                         tracer,
 		logger:                         logger,
 	}
-	
+
 	congestion := congestion.NewBbrSender(
 		congestion.DefaultClock{},
 		rttStats,
@@ -144,7 +145,7 @@ func newSentPacketHandler(
 		tracer,
 	)
 	h.congestion = congestion
-	
+
 	if enableECN {
 		h.enableECN = true
 		h.ecnTracker = newECNTracker(logger, tracer)
@@ -346,7 +347,30 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 				ackDelay = min(ack.DelayTime, h.rttStats.MaxAckDelay())
 			}
 			h.rttStats.UpdateRTT(rcvTime.Sub(p.SendTime), ackDelay, rcvTime)
-			fmt.Printf("RECEIVED ACK UPDATED RTT: %s, %s, %s, %s, %s\n", rcvTime, p.SendTime, rcvTime.Sub(p.SendTime), h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
+
+			t := time.Now()
+			ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
+			updateRttFileDir := "/home/wmnlab/temp/" + ty + "_updateRtt_s.txt"
+			updateRttFile, err := os.OpenFile(updateRttFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				updateRttFileDir = "/sdcard/Data/" + ty + "_updateRtt_c.txt"
+				updateRttFile, err = os.OpenFile(updateRttFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					fmt.Println("Error opening both cwnd file:", err)
+				}
+			}
+			logMessage := fmt.Sprintf(
+				"RECEIVED ACK UPDATED RTT: %s, %s, %s, %s, %s\n", 
+				rcvTime, 
+				p.SendTime, 
+				rcvTime.Sub(p.SendTime), 
+				h.rttStats.SmoothedRTT(), 
+				h.rttStats.MeanDeviation())
+			_, err = updateRttFile.WriteString(logMessage)
+			if err != nil {
+				fmt.Println("Error writing to updateRtt file:", err)
+			}
+
 			if h.logger.Debug() {
 				h.logger.Debugf("\tupdated RTT: %s (σ: %s)", h.rttStats.SmoothedRTT(), h.rttStats.MeanDeviation())
 			}
@@ -358,9 +382,9 @@ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.En
 	// var congested bool
 	// if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil && largestAcked > pnSpace.largestAcked {
 	// 	congested = h.ecnTracker.HandleNewlyAcked(ackedPackets, int64(ack.ECT0), int64(ack.ECT1), int64(ack.ECNCE))
-		// if congested {
-		// 	h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight, rcvTime)
-		// }
+	// if congested {
+	// 	h.congestion.OnCongestionEvent(largestAcked, 0, priorInFlight, rcvTime)
+	// }
 	// }
 
 	pnSpace.largestAcked = max(pnSpace.largestAcked, largestAcked)
@@ -672,16 +696,16 @@ func (h *sentPacketHandler) detectLostPackets(now time.Time, encLevel protocol.E
 					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossTimeThreshold)
 				}
 			}
-		// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
-		// 	packetLost = true
-		// 	if !p.skippedPacket {
-		// 		if h.logger.Debug() {
-		// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
-		// 		}
-		// 		if h.tracer != nil && h.tracer.LostPacket != nil {
-		// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
-		// 		}
-		// 	}
+			// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
+			// 	packetLost = true
+			// 	if !p.skippedPacket {
+			// 		if h.logger.Debug() {
+			// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
+			// 		}
+			// 		if h.tracer != nil && h.tracer.LostPacket != nil {
+			// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
+			// 		}
+			// 	}
 		} else if pnSpace.lossTime.IsZero() {
 			// Note: This conditional is only entered once per call
 			lossTime := p.SendTime.Add(lossDelay)
@@ -741,17 +765,17 @@ func (h *sentPacketHandler) BbrDetectLostPackets(now time.Time, encLevel protoco
 					h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossTimeThreshold)
 				}
 			}
-		// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
-		// 	packetLost = true
-		// 	lostPackets = append(lostPackets, p)
-		// 	if !p.skippedPacket {
-		// 		if h.logger.Debug() {
-		// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
-		// 		}
-		// 		if h.tracer != nil && h.tracer.LostPacket != nil {
-		// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
-		// 		}
-		// 	}
+			// } else if pnSpace.largestAcked >= p.PacketNumber+packetThreshold {
+			// 	packetLost = true
+			// 	lostPackets = append(lostPackets, p)
+			// 	if !p.skippedPacket {
+			// 		if h.logger.Debug() {
+			// 			h.logger.Debugf("\tlost packet %d (reordering threshold)", p.PacketNumber)
+			// 		}
+			// 		if h.tracer != nil && h.tracer.LostPacket != nil {
+			// 			h.tracer.LostPacket(p.EncryptionLevel, p.PacketNumber, logging.PacketLossReorderingThreshold)
+			// 		}
+			// 	}
 		} else if pnSpace.lossTime.IsZero() {
 			// Note: This conditional is only entered once per call
 			lossTime := p.SendTime.Add(lossDelay)
