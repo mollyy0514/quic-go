@@ -209,68 +209,69 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 
 	if c.reno {
 		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
-
 		currentCongestionWindow := c.congestionWindow
+		
 		t := time.Now()
+		td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 		ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 		recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
 		file, err := os.ReadFile(recordFileName)
 		if err != nil {
 			fmt.Println("Error while reading the file", err)
 		}
-
 		content := string(file)
 		latestRecord := strings.Split(content, ",")
 		thres := 0.5
-		latestRecordTime := t.Format("2006-01-02 15:04:05.999999")
+		currDevTime := t.Format("2006-01-02 15:04:05.999999")
+		var latestRecordTime string
 		var ho_state int
 		// Check if the file was empty
 		if len(latestRecord) > 0 {
 			// Print the last record (row)
 			if len(latestRecord) >= 6 {
 				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
-				ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
+				// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 				if err != nil {
 					fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 				}
-				diff := t.Sub(ts)
+				// diff := t.Sub(ts)
 				rlf, _ := strconv.ParseFloat(latestRecord[2], 64)
 				lte_ho, _ := strconv.ParseFloat(latestRecord[3], 64)
 				nr_ho, _ := strconv.ParseFloat(latestRecord[4], 64)
 				if rlf >= thres {
-					if diff <= time.Second && diff >= 0 {
-						targetCongestionWindow = currentCongestionWindow
-					}
+					// if diff <= time.Second && diff >= 0 {
+					targetCongestionWindow = currentCongestionWindow
+					// }
 					ho_state = 1
 					latestRecordTime = latestRecord[0]
 				}
 				if lte_ho >= thres {
-					if diff <= time.Second && diff >= 0 {
-						targetCongestionWindow = currentCongestionWindow
-					}
+					// if diff <= time.Second && diff >= 0 {
+					targetCongestionWindow = currentCongestionWindow
+					// }
 					ho_state = 2
 					latestRecordTime = latestRecord[0]
 				}
 				if nr_ho >= thres {
-					if diff <= time.Second && diff >= 0 {
-						targetCongestionWindow = currentCongestionWindow
-					}
+					// if diff <= time.Second && diff >= 0 {
+					targetCongestionWindow = currentCongestionWindow
+					// }
 					ho_state = 3
 					latestRecordTime = latestRecord[0]
 				}
 			}
 		}
 
-		cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd_s.txt"
+		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			cwndFileDir = "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
+			cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
 			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				fmt.Println("Error opening both cwnd file:", err)
 			}
 		}
-		_, err = cwndFile.WriteString(latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
+		_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
 		if err != nil {
 			fmt.Println("Error writing to cwnd file:", err)
 		}

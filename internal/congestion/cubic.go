@@ -142,9 +142,31 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	c.epoch = time.Time{} // Reset time.
 	expectedCwnd := protocol.ByteCount(float32(currentCongestionWindow) * c.beta())
 
+	// check the existence of the directory
 	t := time.Now()
+	td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
-	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
+	// server side
+	serverLogDir := "/home/wmnlab/experiment_log/"
+	clientLogDir := "/sdcard/experiment_log/"
+	var recordDir string
+	if _, err := os.Stat(serverLogDir); err == nil {
+		recordDir = serverLogDir + td + "/record/"
+		err := os.MkdirAll(recordDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error while creating the directory:", err)
+		}
+	} else if _, err := os.Stat(clientLogDir); err == nil {
+		recordDir = serverLogDir + td + "/record/"
+		err := os.MkdirAll(recordDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error while creating the directory:", err)
+		}
+	} else {
+		// Some other error occurred
+		fmt.Println("Error checking the directory:", err)
+	}
+	recordFileName := "/home/wmnlab/temp/" + td + "/record/" + ty + "_" + dev + "_tmp_record.txt"
 	file, err := os.ReadFile(recordFileName)
 	if err != nil {
 		fmt.Println("Error while reading the file", err)
@@ -153,55 +175,58 @@ func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWin
 	content := string(file)
 	latestRecord := strings.Split(content, ",")
 	thres := 0.5
-	latestRecordTime := t.Format("2006-01-02 15:04:05.999999")
+	currDevTime := t.Format("2006-01-02 15:04:05.999999")
+	var latestRecordTime string
 	var ho_state int
 	// Check if the file was empty
+	// TODO: make sure the latest record is the correct prediction time 
+	// (may required client side store the latest record using the time_sync json file)
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
 		if len(latestRecord) >= 6 {
 			fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
-			ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
+			// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
-			diff := t.Sub(ts)
+			// diff := t.Sub(ts)
 			rlf, _ := strconv.ParseFloat(latestRecord[2], 64)
 			lte_ho, _ := strconv.ParseFloat(latestRecord[3], 64)
 			nr_ho, _ := strconv.ParseFloat(latestRecord[4], 64)
 			if rlf >= thres {
-				if diff <= time.Second && diff >= 0 {
-					expectedCwnd = currentCongestionWindow
-				}
+				// if diff <= time.Second && diff >= 0 {
+				expectedCwnd = currentCongestionWindow
+				// }
 				ho_state = 1
 				latestRecordTime = latestRecord[0]
 			}
 			if lte_ho >= thres {
-				if diff <= time.Second && diff >= 0 {
-					expectedCwnd = currentCongestionWindow
-				}
+				// if diff <= time.Second && diff >= 0 {
+				expectedCwnd = currentCongestionWindow
+				// }
 				ho_state = 2
 				latestRecordTime = latestRecord[0]
 			}
 			if nr_ho >= thres {
-				if diff <= time.Second && diff >= 0 {
-					expectedCwnd = currentCongestionWindow
-				}
+				// if diff <= time.Second && diff >= 0 {
+				expectedCwnd = currentCongestionWindow
+				// }
 				ho_state = 3
 				latestRecordTime = latestRecord[0]
 			}
 		}
 	}
 
-	cwndFileDir := "/home/wmnlab/temp/" + ty + "_" + dev + "_cwnd_s.txt"
+	cwndFileDir := recordDir + ty + "_" + dev + "_cwnd_s.txt"
 	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		cwndFileDir = "/sdcard/Data/" + ty + "_" + dev + "_cwnd_c.txt"
+		cwndFileDir = recordDir + ty + "_" + dev + "_cwnd_c.txt"
 		cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Println("Error opening both cwnd file:", err)
 		}
 	}
-	_, err = cwndFile.WriteString(latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(currentCongestionWindow), 10) + " -> " + strconv.FormatInt(int64(expectedCwnd), 10) + "\n")
+	_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(currentCongestionWindow), 10) + " -> " + strconv.FormatInt(int64(expectedCwnd), 10) + "\n")
 	if err != nil {
 		fmt.Println("Error writing to cwnd file:", err)
 	}
