@@ -259,6 +259,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 					ho_state = 3
 					latestRecordTime = latestRecord[0]
 				}
+				fmt.Println("LATEST RECORD:", latestRecordTime, latestRecord[1], rlf, lte_ho, nr_ho)
 			}
 		}
 
