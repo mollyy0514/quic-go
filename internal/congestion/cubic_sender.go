@@ -3,6 +3,7 @@ package congestion
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -210,7 +211,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 	if c.reno {
 		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
 		currentCongestionWindow := c.congestionWindow
-		
+
 		t := time.Now()
 		td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 		ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
@@ -229,15 +230,15 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 		if len(latestRecord) > 0 {
 			// Print the last record (row)
 			if len(latestRecord) >= 6 {
-				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
+				fmt.Println("LATEST RECORD:", reflect.TypeOf(latestRecord[0]), latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
 				// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 				if err != nil {
 					fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 				}
 				// diff := t.Sub(ts)
-				rlf, _ := strconv.ParseFloat(latestRecord[2], 64)
-				lte_ho, _ := strconv.ParseFloat(latestRecord[3], 64)
-				nr_ho, _ := strconv.ParseFloat(latestRecord[4], 64)
+				rlf, _ := strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
+				lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
+				nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[3])-1], 64)
 				if rlf >= thres {
 					// if diff <= time.Second && diff >= 0 {
 					targetCongestionWindow = currentCongestionWindow
@@ -306,7 +307,7 @@ func hoState(state int) string {
 	default:
 		stateString = "invalid state"
 	}
-	
+
 	return stateString
 }
 
