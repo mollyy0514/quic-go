@@ -245,19 +245,20 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 					// }
 					ho_state = 1
 					latestRecordTime = latestRecord[0]
-				} else if lte_ho >= thres {
-					// if diff <= time.Second && diff >= 0 {
-					targetCongestionWindow = currentCongestionWindow
-					// }
-					ho_state = 2
-					latestRecordTime = latestRecord[0]
-				} else if nr_ho >= thres {
-					// if diff <= time.Second && diff >= 0 {
-					targetCongestionWindow = currentCongestionWindow
-					// }
-					ho_state = 3
-					latestRecordTime = latestRecord[0]
 				} else {
+				// else if lte_ho >= thres {
+				// 	// if diff <= time.Second && diff >= 0 {
+				// 	targetCongestionWindow = currentCongestionWindow
+				// 	// }
+				// 	ho_state = 2
+				// 	latestRecordTime = latestRecord[0]
+				// } else if nr_ho >= thres {
+				// 	// if diff <= time.Second && diff >= 0 {
+				// 	targetCongestionWindow = currentCongestionWindow
+				// 	// }
+				// 	ho_state = 3
+				// 	latestRecordTime = latestRecord[0]
+				// } 
 					latestRecordTime = "none"
 				}
 				fmt.Println("LATEST RECORD:", latestRecordTime, latestRecord[1], rlf, lte_ho, nr_ho)
