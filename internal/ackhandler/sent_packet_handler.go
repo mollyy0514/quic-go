@@ -620,18 +620,15 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
+	serverFlag := true
+	if _, err := os.Stat("/home/wmnlab/"); os.IsNotExist(err) {
+		serverFlag = false
+	} else {
+		serverFlag = true
+	}
 	file, err := os.ReadFile(recordFileName)
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("File does not exist. Creating it...")
-			// Create the file
-			newFile, createErr := os.Create(recordFileName)
-			if createErr != nil {
-				fmt.Println("Error while creating the file:", createErr)
-			}
-			defer newFile.Close()
-			fmt.Println("File created successfully.")
-		} else {
+		if serverFlag {
 			fmt.Println("Error while reading the file:", err)
 		}
 	}
