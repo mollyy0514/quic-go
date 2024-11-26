@@ -210,10 +210,11 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 	// set `dev` & `latestRecordTime`
 	var dev string
 	var latestRecordTime string
-	if ho_state > 0 {
-		paramList := strings.Split(param, " ")
+	paramList := strings.Split(param, ",")
+	if len(paramList) > 1 {
 		dev = paramList[0]
 		latestRecordTime = paramList[1]
+		print()
 	} else {
 		dev = param
 		latestRecordTime = "none"
