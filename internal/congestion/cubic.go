@@ -131,6 +131,7 @@ func (c *Cubic) OnApplicationLimited() {
 // CongestionWindowAfterPacketLoss computes a new congestion window to use after
 // a loss event. Returns the new congestion window in packets. The new
 // congestion window is a multiplicative decrease of our current window.
+// TODO: Sync with Reno method!!
 func (c *Cubic) CongestionWindowAfterPacketLoss(dev string, currentCongestionWindow protocol.ByteCount) protocol.ByteCount {
 	if currentCongestionWindow+maxDatagramSize < c.lastMaxCongestionWindow {
 		// We never reached the old max, so assume we are competing with another

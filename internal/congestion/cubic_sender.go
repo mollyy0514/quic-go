@@ -3,7 +3,6 @@ package congestion
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -199,7 +198,7 @@ func (c *cubicSender) OnPacketAcked(
 	}
 }
 
-func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.PacketNumber, lostBytes, priorInFlight protocol.ByteCount) {
+func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber protocol.PacketNumber, lostBytes, priorInFlight protocol.ByteCount) {
 	// TCP NewReno (RFC6582) says that once a loss occurs, any losses in packets
 	// already sent should be treated as a single loss event, since it's expected.
 	if packetNumber <= c.largestSentAtLastCutback {
@@ -208,62 +207,32 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 	c.lastCutbackExitedSlowstart = c.InSlowStart()
 	c.maybeTraceStateChange(logging.CongestionStateRecovery)
 
+	// set `dev` & `latestRecordTime`
+	var dev string
+	var latestRecordTime string
+	if ho_state > 0 {
+		paramList := strings.Split(param, " ")
+		dev = paramList[0]
+		latestRecordTime = paramList[1]
+	} else {
+		dev = param
+		latestRecordTime = "none"
+	}
+
 	if c.reno {
 		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
 		currentCongestionWindow := c.congestionWindow
 
+		// get current time
 		t := time.Now()
 		td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 		ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
-		recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
-		file, err := os.ReadFile(recordFileName)
-		if err != nil {
-			fmt.Println("Error while reading the file", err)
-		}
-		content := string(file)
-		latestRecord := strings.Split(content, ",")
-		thres := 0.5
 		currDevTime := t.Format("2006-01-02 15:04:05.999999")
-		var latestRecordTime string
-		var ho_state int
-		// Check if the file was empty
-		if len(latestRecord) > 0 {
-			// Print the last record (row)
-			if len(latestRecord) >= 6 {
-				fmt.Println("LATEST RECORD:", reflect.TypeOf(latestRecord[0]), latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
-				// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
-				if err != nil {
-					fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
-				}
-				// diff := t.Sub(ts)
-				rlf, _ := strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
-				lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
-				nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
-				if rlf >= thres {
-					// if diff <= time.Second && diff >= 0 {
-					targetCongestionWindow = currentCongestionWindow
-					// }
-					ho_state = 1
-					latestRecordTime = latestRecord[0]
-				} else {
-				// else if lte_ho >= thres {
-				// 	// if diff <= time.Second && diff >= 0 {
-				// 	targetCongestionWindow = currentCongestionWindow
-				// 	// }
-				// 	ho_state = 2
-				// 	latestRecordTime = latestRecord[0]
-				// } else if nr_ho >= thres {
-				// 	// if diff <= time.Second && diff >= 0 {
-				// 	targetCongestionWindow = currentCongestionWindow
-				// 	// }
-				// 	ho_state = 3
-				// 	latestRecordTime = latestRecord[0]
-				// } 
-					latestRecordTime = "none"
-				}
-				fmt.Println("LATEST RECORD:", latestRecordTime, latestRecord[1], rlf, lte_ho, nr_ho)
-			}
-		}
+		
+		// control the cwnd if there's possible rlf, lte_ho, nr_ho
+		if ho_state > 0 {
+			targetCongestionWindow = currentCongestionWindow
+		} 
 
 		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -281,6 +250,7 @@ func (c *cubicSender) OnCongestionEvent(dev string, packetNumber protocol.Packet
 
 		c.congestionWindow = targetCongestionWindow
 	} else {
+		// using cubic
 		c.congestionWindow = c.cubic.CongestionWindowAfterPacketLoss(dev, c.congestionWindow)
 	}
 	if minCwnd := c.minCongestionWindow(); c.congestionWindow < minCwnd {

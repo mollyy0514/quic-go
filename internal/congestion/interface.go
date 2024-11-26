@@ -15,7 +15,7 @@ type SendAlgorithm interface {
 	MaybeExitSlowStart()
 	OnPacketAcked(number protocol.PacketNumber, ackedBytes protocol.ByteCount, priorInFlight protocol.ByteCount, eventTime time.Time)
 	// OnCongestionEvent(number protocol.PacketNumber, lostBytes protocol.ByteCount, priorInFlight protocol.ByteCount)
-	OnCongestionEvent(dev string, number protocol.PacketNumber, lostBytes protocol.ByteCount, priorInFlight protocol.ByteCount)
+	OnCongestionEvent(param string, ho_state int, number protocol.PacketNumber, lostBytes protocol.ByteCount, priorInFlight protocol.ByteCount)
 	OnRetransmissionTimeout(packetsRetransmitted bool)
 	SetMaxDatagramSize(protocol.ByteCount)
 }

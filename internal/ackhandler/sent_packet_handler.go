@@ -360,7 +360,7 @@ func (h *sentPacketHandler) ReceivedAck(dev string, ack *wire.AckFrame, encLevel
 	if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil && largestAcked > pnSpace.largestAcked {
 		congested := h.ecnTracker.HandleNewlyAcked(ackedPackets, int64(ack.ECT0), int64(ack.ECT1), int64(ack.ECNCE))
 		if congested {
-			h.congestion.OnCongestionEvent(dev, largestAcked, 0, priorInFlight)
+			h.congestion.OnCongestionEvent(dev, 0, largestAcked, 0, priorInFlight)
 		}
 	}
 
@@ -639,60 +639,51 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	latestRecord := strings.Split(content, ",")
 	thres := 0.5
 	currDevTime := t.Format("2006-01-02 15:04:05.999999")
+	ho_state := 0
 	var latestRecordTime string
-	var ho_state int
+	var rlf float64
 	// Check if the file was empty
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
 		if len(latestRecord) >= 6 {
-			fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
 			// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
-			// diff := t.Sub(ts)
-			rlf, _ := strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
-			lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
-			nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
+			rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
+			// cuurently not using lte_ho & nr_ho prediction
+			// lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
+			// nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
 			if rlf >= thres {
+				// set `ho_state``
+				ho_state = 1
+				// set RTO threshold
 				tmpTimeThreshold *= 2
 				tmpPacketThreshold *= 2
-				ho_state = 1
+				// set parameters
 				latestRecordTime = latestRecord[0]
+				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
 			} else {
-				// else if lte_ho >= thres {
-				// 	// if diff <= time.Second && diff >= 0 {
-				// 	targetCongestionWindow = currentCongestionWindow
-				// 	// }
-				// 	ho_state = 2
-				// 	latestRecordTime = latestRecord[0]
-				// } else if nr_ho >= thres {
-				// 	// if diff <= time.Second && diff >= 0 {
-				// 	targetCongestionWindow = currentCongestionWindow
-				// 	// }
-				// 	ho_state = 3
-				// 	latestRecordTime = latestRecord[0]
-				// }
 				tmpTimeThreshold = timeThreshold
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
 			}
-			fmt.Println("LATEST RECORD:", latestRecordTime, latestRecord[1], rlf, lte_ho, nr_ho)
 		}
 	}
-
-	cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
-	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
-		cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if ho_state > 0 {
+		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
+		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Println("Error opening both cwnd file:", err)
+			cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening both cwnd file:", err)
+			}
 		}
-	}
-	_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(tmpTimeThreshold), 10) + " , " + strconv.FormatInt(int64(tmpPacketThreshold), 10) + "\n")
-	if err != nil {
-		fmt.Println("Error writing to cwnd file:", err)
+		_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(tmpTimeThreshold), 10) + " , " + strconv.FormatInt(int64(tmpPacketThreshold), 10) + "\n")
+		if err != nil {
+			fmt.Println("Error writing to cwnd file:", err)
+		}
 	}
 	pnSpace := h.getPacketNumberSpace(encLevel)
 	pnSpace.lossTime = time.Time{}
@@ -748,7 +739,8 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				h.removeFromBytesInFlight(p)
 				h.queueFramesForRetransmission(p)
 				if !p.IsPathMTUProbePacket {
-					h.congestion.OnCongestionEvent(dev, p.PacketNumber, p.Length, priorInFlight)
+					param := fmt.Sprintln(dev, ' ', latestRecordTime)
+					h.congestion.OnCongestionEvent(param, ho_state, p.PacketNumber, p.Length, priorInFlight)
 				}
 				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
 					h.ecnTracker.LostPacket(p.PacketNumber)
