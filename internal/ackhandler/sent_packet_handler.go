@@ -647,6 +647,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
+			// handover event prediction
 			rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
 			// cuurently not using lte_ho & nr_ho prediction
 			// lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
@@ -665,8 +666,22 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
 			}
+			// Handover event notification
+			if len(latestRecord[5]) > 0 {
+				latestHo := strings.Split(latestRecord[5], ",")
+				latestHoTime, _ := time.Parse(latestHo[1], "2006-01-02 15:04:05.999999")
+				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
+					ho_state = 1
+				} else if latestHo[0] == "MN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
+					ho_state = 2
+				} else if latestHo[0] == "SN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
+					ho_state = 3
+				}
+				fmt.Println("LATEST HANDOVER:", latestRecord[0], latestRecord[1], latestRecord[5])
+			}
 		}
 	}
+	// Increase the packet lost threshold when hanodvers are predicted.
 	if ho_state > 0 {
 		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
