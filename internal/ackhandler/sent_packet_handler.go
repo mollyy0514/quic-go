@@ -634,7 +634,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 		}
 	}
 	content := string(file)
-	latestRecord := strings.Split(content, ",")
+	latestRecord := strings.Split(content, "@")
 	thres := 0.5
 	// currDevTime := t.Format("2006-01-02 15:04:05.999999")
 	ho_state := 0
