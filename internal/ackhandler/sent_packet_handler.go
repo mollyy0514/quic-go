@@ -616,8 +616,9 @@ func (h *sentPacketHandler) setLossDetectionTimer() {
 func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLevel protocol.EncryptionLevel) error {
 	tmpTimeThreshold := timeThreshold
 	tmpPacketThreshold := packetThreshold
+	// Read the current tmp record for dev
 	t := time.Now()
-	td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
+	// td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
 	serverFlag := true
@@ -635,7 +636,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	content := string(file)
 	latestRecord := strings.Split(content, ",")
 	thres := 0.5
-	currDevTime := t.Format("2006-01-02 15:04:05.999999")
+	// currDevTime := t.Format("2006-01-02 15:04:05.999999")
 	ho_state := 0
 	var latestRecordTime string
 	var rlf float64
@@ -647,13 +648,13 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
 			}
-			// handover event prediction
+			// Handover event prediction
 			rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
 			// cuurently not using lte_ho & nr_ho prediction
 			// lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
 			// nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
 			if rlf >= thres {
-				// set `ho_state``
+				// set `ho_state`
 				ho_state = 1
 				// set RTO threshold
 				tmpTimeThreshold *= 2
@@ -667,8 +668,10 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = "none"
 			}
 			// Handover event notification
-			if len(latestRecord[5]) > 0 {
+			if latestRecord[5] != "[]" {
+				fmt.Println("LATESTHO (str):", latestRecord[5])
 				latestHo := strings.Split(latestRecord[5], ",")
+				fmt.Println("LATESTHO (array):", latestHo)
 				latestHoTime, _ := time.Parse(latestHo[1], "2006-01-02 15:04:05.999999")
 				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 1
@@ -681,22 +684,22 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			}
 		}
 	}
-	// Increase the packet lost threshold when hanodvers are predicted.
-	if ho_state > 0 {
-		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
-		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
-			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				fmt.Println("Error opening both cwnd file:", err)
-			}
-		}
-		_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(tmpTimeThreshold), 10) + " , " + strconv.FormatInt(int64(tmpPacketThreshold), 10) + "\n")
-		if err != nil {
-			fmt.Println("Error writing to cwnd file:", err)
-		}
-	}
+	// // Increase the packet lost threshold when hanodvers are predicted.
+	// if ho_state > 0 {
+	// 	cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
+	// 	cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// 	if err != nil {
+	// 		cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+	// 		cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// 		if err != nil {
+	// 			fmt.Println("Error opening both cwnd file:", err)
+	// 		}
+	// 	}
+	// 	_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(tmpTimeThreshold), 10) + " , " + strconv.FormatInt(int64(tmpPacketThreshold), 10) + "\n")
+	// 	if err != nil {
+	// 		fmt.Println("Error writing to cwnd file:", err)
+	// 	}
+	// }
 	pnSpace := h.getPacketNumberSpace(encLevel)
 	pnSpace.lossTime = time.Time{}
 

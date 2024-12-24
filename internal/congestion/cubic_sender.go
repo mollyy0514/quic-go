@@ -214,7 +214,6 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 	if len(paramList) > 1 {
 		dev = paramList[0]
 		latestRecordTime = paramList[1]
-		print()
 	} else {
 		dev = param
 		latestRecordTime = "none"
