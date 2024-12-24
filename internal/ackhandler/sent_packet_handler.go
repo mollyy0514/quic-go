@@ -668,10 +668,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = "none"
 			}
 			// Handover event notification
+			fmt.Println("latestRecord[5]:", latestRecord[5])
 			if latestRecord[5] != "[]" {
-				fmt.Println("LATESTHO (str):", latestRecord[5])
 				latestHo := strings.Split(latestRecord[5], ",")
-				fmt.Println("LATESTHO (array):", latestHo)
 				latestHoTime, _ := time.Parse(latestHo[1], "2006-01-02 15:04:05.999999")
 				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 1
