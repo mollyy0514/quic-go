@@ -643,7 +643,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	// Check if the file was empty
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
-		if len(latestRecord) >= 6 {
+		if len(latestRecord) >= 7 {
 			// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
 			if err != nil {
 				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
@@ -668,9 +668,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = "none"
 			}
 			// Handover event notification
-			fmt.Println("latestRecord[5]:", latestRecord[5])
-			if latestRecord[5] != "[]" {
-				latestHo := strings.Split(latestRecord[5], ",")
+			fmt.Println("latestRecord[6]:", latestRecord[6])
+			if latestRecord[6] != "[]" {
+				latestHo := strings.Split(latestRecord[6], ",")
 				latestHoTime, _ := time.Parse(latestHo[1], "2006-01-02 15:04:05.999999")
 				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 1
@@ -679,7 +679,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				} else if latestHo[0] == "SN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 3
 				}
-				fmt.Println("LATEST HANDOVER:", latestRecord[0], latestRecord[1], latestRecord[5])
+				fmt.Println("LATEST HANDOVER:", latestRecord[0], latestRecord[1], latestRecord[6])
 			}
 		}
 	}
