@@ -764,24 +764,24 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	})
 }
 
-// Function to print out the state based on the integer value
-func hoState(state int) string {
-	var stateString string
-	switch state {
-	case None:
-		stateString = "none"
-	case RLF:
-		stateString = "rlf"
-	case LTE_HO:
-		stateString = "lte_ho"
-	case NR_HO:
-		stateString = "nr_ho"
-	default:
-		stateString = "invalid state"
-	}
+// // Function to print out the state based on the integer value
+// func hoState(state int) string {
+// 	var stateString string
+// 	switch state {
+// 	case None:
+// 		stateString = "none"
+// 	case RLF:
+// 		stateString = "rlf"
+// 	case LTE_HO:
+// 		stateString = "lte_ho"
+// 	case NR_HO:
+// 		stateString = "nr_ho"
+// 	default:
+// 		stateString = "invalid state"
+// 	}
 
-	return stateString
-}
+// 	return stateString
+// }
 
 func (h *sentPacketHandler) OnLossDetectionTimeout(dev string) error {
 	defer h.setLossDetectionTimer()
