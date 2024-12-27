@@ -645,9 +645,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 		// Print the last record (row)
 		if len(latestRecord) >= 7 {
 			// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
-			if err != nil {
-				fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
-			}
+			// if err != nil {
+			// 	fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
+			// }
 			// Handover event prediction
 			rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
 			// cuurently not using lte_ho & nr_ho prediction
@@ -668,9 +668,8 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = "none"
 			}
 			// Handover event notification
-			fmt.Println("latestRecord[6]:", latestRecord[6])
 			if latestRecord[6] != "[]" {
-				latestHo := strings.Split(latestRecord[6], ",")
+				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
 				latestHoTime, _ := time.Parse(latestHo[1], "2006-01-02 15:04:05.999999")
 				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 1
