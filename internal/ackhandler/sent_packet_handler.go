@@ -754,7 +754,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				if !p.IsPathMTUProbePacket {
 					param := fmt.Sprint(dev, ",", latestRecordTime)
 					if ho_state > 0 {
-						fmt.Println("PARAM:", param, "HO_STATE:", ho_state)
+						fmt.Println("NOW:", t, "PARAM:", param, "HO_STATE:", ho_state)
 					}
 					h.congestion.OnCongestionEvent(param, ho_state, p.PacketNumber, p.Length, priorInFlight)
 				}
