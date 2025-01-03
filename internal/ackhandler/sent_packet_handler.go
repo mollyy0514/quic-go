@@ -753,6 +753,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				h.queueFramesForRetransmission(p)
 				if !p.IsPathMTUProbePacket {
 					param := fmt.Sprint(dev, ",", latestRecordTime)
+					if ho_state > 0 {
+						fmt.Println("PARAM:", param, "HO_STATE:", ho_state)
+					}
 					h.congestion.OnCongestionEvent(param, ho_state, p.PacketNumber, p.Length, priorInFlight)
 				}
 				if encLevel == protocol.Encryption1RTT && h.ecnTracker != nil {
