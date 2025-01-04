@@ -3,6 +3,7 @@ package congestion
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -214,6 +215,7 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 	if len(paramList) > 1 {
 		dev = paramList[0]
 		latestRecordTime = paramList[1]
+		fmt.Println(reflect.TypeOf(latestRecordTime), latestRecordTime)
 	} else {
 		dev = param
 		latestRecordTime = "none"
@@ -228,11 +230,11 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 		td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 		ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 		currDevTime := t.Format("2006-01-02 15:04:05.999999")
-		
+
 		// control the cwnd if there's possible rlf, lte_ho, nr_ho
 		if ho_state > 0 {
 			targetCongestionWindow = currentCongestionWindow
-		} 
+		}
 
 		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
 		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

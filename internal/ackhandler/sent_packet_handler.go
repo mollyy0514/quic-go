@@ -671,7 +671,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			if latestRecord[6] != "[]" {
 				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
 				latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
-				if latestHo[0] == "RLF_II" && now.Sub(latestHoTime) <= 3 * time.Second {
+				if latestHo[0] == "RLF" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 1
 				} else if latestHo[0] == "MN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
 					ho_state = 2
@@ -753,7 +753,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				h.queueFramesForRetransmission(p)
 				if !p.IsPathMTUProbePacket {
 					param := fmt.Sprint(dev, ",", latestRecordTime)
+					fmt.Println(t, "PKT LOST!!", latestRecordTime)
 					if ho_state > 0 {
+						
 						fmt.Println("NOW:", t, "PARAM:", param, "HO_STATE:", ho_state)
 					}
 					h.congestion.OnCongestionEvent(param, ho_state, p.PacketNumber, p.Length, priorInFlight)
