@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mollyy0514/quic-go"
 	"github.com/mollyy0514/quic-go/internal/congestion"
 	"github.com/mollyy0514/quic-go/internal/protocol"
 	"github.com/mollyy0514/quic-go/internal/qerr"
