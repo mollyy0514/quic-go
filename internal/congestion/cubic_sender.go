@@ -316,11 +316,16 @@ func (c *cubicSender) maybeIncreaseCwnd(
 	// Congestion avoidance
 	c.maybeTraceStateChange(logging.CongestionStateCongestionAvoidance)
 	if c.reno {
+		oldCwnd := c.congestionWindow
+		oldCwndStr := strconv.FormatInt(int64(c.congestionWindow), 10)
 		// Classic Reno congestion avoidance.
 		c.numAckedPackets++
 		if c.numAckedPackets >= uint64(c.congestionWindow/c.maxDatagramSize) {
 			c.congestionWindow += c.maxDatagramSize
 			c.numAckedPackets = 0
+		}
+		if (oldCwnd < c.congestionWindow) {
+			fmt.Println("CWND Increase: ", oldCwndStr, "->", strconv.FormatInt(int64(c.congestionWindow), 10))
 		}
 	} else {
 		c.congestionWindow = min(c.maxCongestionWindow(), c.cubic.CongestionWindowAfterAck(ackedBytes, c.congestionWindow, c.rttStats.MinRTT(), eventTime))
