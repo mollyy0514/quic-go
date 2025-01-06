@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mollyy0514/quic-go"
 	"github.com/mollyy0514/quic-go/internal/congestion"
 	"github.com/mollyy0514/quic-go/internal/protocol"
 	"github.com/mollyy0514/quic-go/internal/qerr"
@@ -670,7 +671,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			// Handover event notification
 			if latestRecord[6] != "[]" {
 				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
-				print("latestHO", latestHo[0])
+				// print("latestHO", latestHo[0])
 				// latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
 				if latestHo[0] == "RLF" {
 					ho_state = 1

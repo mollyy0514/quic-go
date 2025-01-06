@@ -248,7 +248,9 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 				fmt.Println("Error opening both cwnd file:", err)
 			}
 		}
-		_, err = cwndFile.WriteString(currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n")
+		writeString := currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n"
+		fmt.Println(writeString)
+		_, err = cwndFile.WriteString(writeString)
 		if err != nil {
 			fmt.Println("Error writing to cwnd file:", err)
 		}
