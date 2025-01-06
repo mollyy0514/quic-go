@@ -671,12 +671,12 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			if latestRecord[6] != "[]" {
 				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
 				print("latestHO", latestHo[0])
-				latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
-				if latestHo[0] == "RLF" && now.Sub(latestHoTime) <= 3 * time.Second {
+				// latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
+				if latestHo[0] == "RLF" {
 					ho_state = 1
-				} else if latestHo[0] == "MN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
+				} else if latestHo[0] == "MN_HO" {
 					ho_state = 2
-				} else if latestHo[0] == "SN_HO" && now.Sub(latestHoTime) <= 3 * time.Second {
+				} else if latestHo[0] == "SN_HO" {
 					ho_state = 3
 				}
 				if ho_state > 0 {
