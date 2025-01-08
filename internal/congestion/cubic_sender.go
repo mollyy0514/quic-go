@@ -211,17 +211,12 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 	// set `dev` & `latestRecordTime`
 	var dev string
 	var latestRecordTime string
+	var pers string
 	paramList := strings.Split(param, ",")
 	if len(paramList) > 1 {
 		dev = paramList[0]
 		latestRecordTime = paramList[1]
-		if (ho_state > 0) {
-			fmt.Println(reflect.TypeOf(latestRecordTime), latestRecordTime)
-		}
-		
-	} else {
-		dev = param
-		latestRecordTime = "none"
+		pers = paramList[2]
 	}
 
 	if c.reno {
@@ -238,18 +233,22 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 		if ho_state > 0 {
 			targetCongestionWindow = currentCongestionWindow
 		}
-
-		cwndFileDir := "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
-		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
-			cwndFile, err = os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				fmt.Println("Error opening both cwnd file:", err)
+		var cwndFileDir string
+		if pers == "server" {
+			cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
+		} else if pers == "client" {
+			if dev[:3] != "vir" {	// phone exp
+				cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+			} else {	// emulator
+				cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
 			}
 		}
+		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening both cwnd file:", err)
+		}
 		writeString := currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n"
-		fmt.Println(writeString)
+		fmt.Println(reflect.TypeOf(latestRecordTime), writeString)
 		_, err = cwndFile.WriteString(writeString)
 		if err != nil {
 			fmt.Println("Error writing to cwnd file:", err)
@@ -319,7 +318,7 @@ func (c *cubicSender) maybeIncreaseCwnd(
 	c.maybeTraceStateChange(logging.CongestionStateCongestionAvoidance)
 	if c.reno {
 		// oldCwnd := c.congestionWindow
-		
+
 		// Classic Reno congestion avoidance.
 		c.numAckedPackets++
 		if c.numAckedPackets >= uint64(c.congestionWindow/c.maxDatagramSize) {

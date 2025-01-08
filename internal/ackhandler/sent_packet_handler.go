@@ -755,7 +755,13 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				h.removeFromBytesInFlight(p)
 				h.queueFramesForRetransmission(p)
 				if !p.IsPathMTUProbePacket {
-					param := fmt.Sprint(dev, ",", latestRecordTime)
+					var pers string
+					if h.perspective == protocol.PerspectiveClient {
+						pers = "client"
+					} else if h.perspective == protocol.PerspectiveServer {
+						pers = "server"
+					}
+					param := fmt.Sprint(dev, ",", latestRecordTime, ",", pers)
 					if ho_state > 0 {
 						fmt.Println("NOW:", t, "PARAM:", param, "HO_STATE:", ho_state)
 					}
