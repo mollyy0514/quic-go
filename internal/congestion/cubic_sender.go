@@ -296,8 +296,6 @@ func (c *cubicSender) maybeIncreaseCwnd(
 	priorInFlight protocol.ByteCount,
 	eventTime time.Time,
 ) {
-	oldCwndStr := strconv.FormatInt(int64(c.congestionWindow), 10)
-	fmt.Println("OLDCWND:", oldCwndStr)
 	// Do not increase the congestion window unless the sender is close to using
 	// the current window.
 	if !c.isCwndLimited(priorInFlight) {
@@ -325,9 +323,6 @@ func (c *cubicSender) maybeIncreaseCwnd(
 			c.congestionWindow += c.maxDatagramSize
 			c.numAckedPackets = 0
 		}
-		// if (oldCwnd < c.congestionWindow) {
-		fmt.Println("NEWCWND", strconv.FormatInt(int64(c.congestionWindow), 10))
-		// }
 	} else {
 		c.congestionWindow = min(c.maxCongestionWindow(), c.cubic.CongestionWindowAfterAck(ackedBytes, c.congestionWindow, c.rttStats.MinRTT(), eventTime))
 	}
