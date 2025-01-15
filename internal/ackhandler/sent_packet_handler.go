@@ -620,18 +620,15 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	t := time.Now()
 	// td := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
-	recordFileName := "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
-	serverFlag := true
-	if _, err := os.Stat("/home/wmnlab/"); os.IsNotExist(err) {
-		serverFlag = false
-	} else {
-		serverFlag = true
+	var recordFileName string
+	if h.perspective == protocol.PerspectiveClient {
+		recordFileName = "/sdcard/Data/" + ty + "_" + dev + "_tmp_record.txt"
+	} else if h.perspective == protocol.PerspectiveServer {
+		recordFileName = "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
 	}
 	file, err := os.ReadFile(recordFileName)
 	if err != nil {
-		if serverFlag {
-			fmt.Println("Error while reading the file:", err)
-		}
+		fmt.Println("Error while reading the file:", err)
 	}
 	content := string(file)
 	latestRecord := strings.Split(content, "@")
@@ -670,7 +667,6 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			// Handover event notification
 			if latestRecord[6] != "[]" {
 				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
-				// print("latestHO", latestHo[0])
 				// latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
 				if latestHo[0] == "RLF" {
 					ho_state = 1
