@@ -232,26 +232,27 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 		// control the cwnd if there's possible rlf, lte_ho, nr_ho
 		if ho_state > 0 {
 			targetCongestionWindow = currentCongestionWindow
-		}
-		var cwndFileDir string
-		if pers == "server" {
-			cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
-		} else if pers == "client" {
-			if dev[:3] != "vir" {	// phone exp
-				cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
-			} else {	// emulator
-				cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+
+			var cwndFileDir string
+			if pers == "server" {
+				cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_s.txt"
+			} else if pers == "client" {
+				if dev[:3] != "vir" {	// phone exp
+					cwndFileDir = "/sdcard/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+				} else {	// emulator
+					cwndFileDir = "/home/wmnlab/Desktop/experiment_log/" + td + "/record/" + ty + "_" + dev + "_cwnd_c.txt"
+				}
 			}
-		}
-		cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println("Error opening both cwnd file:", err)
-		}
-		writeString := currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n"
-		fmt.Println(reflect.TypeOf(latestRecordTime), writeString)
-		_, err = cwndFile.WriteString(writeString)
-		if err != nil {
-			fmt.Println("Error writing to cwnd file:", err)
+			cwndFile, err := os.OpenFile(cwndFileDir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening both cwnd file:", err)
+			}
+			writeString := currDevTime + " " + latestRecordTime + " " + hoState(ho_state) + " " + strconv.FormatInt(int64(c.congestionWindow), 10) + " -> " + strconv.FormatInt(int64(targetCongestionWindow), 10) + "\n"
+			fmt.Println(reflect.TypeOf(latestRecordTime), writeString)
+			_, err = cwndFile.WriteString(writeString)
+			if err != nil {
+				fmt.Println("Error writing to cwnd file:", err)
+			}
 		}
 
 		c.congestionWindow = targetCongestionWindow
