@@ -622,7 +622,12 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	ty := fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
 	var recordFileName string
 	if h.perspective == protocol.PerspectiveClient {
-		recordFileName = "/sdcard/Data/" + ty + "_" + dev + "_tmp_record.txt"
+		if strings.Contains(dev, "vir") {
+			recordFileName = "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
+		} else {
+			recordFileName = "/sdcard/Data/" + ty + "_" + dev + "_tmp_record.txt"
+		}
+		
 	} else if h.perspective == protocol.PerspectiveServer {
 		recordFileName = "/home/wmnlab/temp/" + ty + "_" + dev + "_tmp_record.txt"
 	}
