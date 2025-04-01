@@ -645,13 +645,10 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	// Check if the file was empty
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
-		if len(latestRecord) >= 7 {
-			// ts, err := time.Parse("2006-01-02 15:04:05.999999", latestRecord[0])
-			// if err != nil {
-			// 	fmt.Println("Error parsing timestamp: ", latestRecord[0], " ", err)
-			// }
+		if len(latestRecord) >= 4 {
 			// Handover event prediction
-			rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
+			// rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
+			rlf, _ = strconv.ParseFloat(latestRecord[2][8:14], 64)
 			// cuurently not using lte_ho & nr_ho prediction
 			// lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
 			// nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
@@ -665,15 +662,15 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				tmpPacketThreshold = packetThreshold
 				// set parameters
 				latestRecordTime = latestRecord[0]
-				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3], latestRecord[4])
+				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 			} else {
 				tmpTimeThreshold = timeThreshold
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
 			}
 			// Handover event notification
-			if latestRecord[6] != "[]" {
-				latestHo := strings.Split(latestRecord[6][1:len(latestRecord[6])-1], ",")
+			if latestRecord[3] != "[]" {
+				latestHo := strings.Split(latestRecord[3][1:len(latestRecord[3])-1], ",")
 				// latestHoTime, _ := time.Parse("2006-01-02 15:04:05.999999", latestHo[1])
 				if latestHo[0] == "RLF" {
 					ho_state = 1
@@ -683,7 +680,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 					ho_state = 3
 				}
 				if ho_state > 0 {
-					fmt.Println("LATEST HANDOVER:", latestRecord[0], latestRecord[1], latestRecord[6])
+					fmt.Println("LATEST HANDOVER:", latestRecord[0], latestRecord[1], latestRecord[3])
 				}
 			}
 		}
