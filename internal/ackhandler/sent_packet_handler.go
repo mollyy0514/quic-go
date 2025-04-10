@@ -643,9 +643,12 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	var latestRecordTime string
 	var rlf float64
 	// Check if the file was empty
+	fmt.Println("1")
 	if len(latestRecord) > 0 {
+		fmt.Println("2")
 		// Print the last record (row)
 		if len(latestRecord) >= 4 {
+			fmt.Println("3")
 			// Handover event prediction
 			// rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
 			rlf, _ = strconv.ParseFloat(latestRecord[2][8:14], 64)
@@ -655,6 +658,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			if rlf >= thres {
 				// set `ho_state`
 				ho_state = 1
+				fmt.Println("4")
 				// set RTO threshold
 				// tmpTimeThreshold *= 2
 				// tmpPacketThreshold *= 2
@@ -664,6 +668,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = latestRecord[0]
 				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 			} else {
+				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 				tmpTimeThreshold = timeThreshold
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
