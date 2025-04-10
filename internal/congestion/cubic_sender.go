@@ -357,6 +357,7 @@ func (c *cubicSender) OnRetransmissionTimeout(packetsRetransmitted bool) {
 	c.cubic.Reset()
 	c.slowStartThreshold = c.congestionWindow / 2
 	c.congestionWindow = c.minCongestionWindow()
+	fmt.Println("cubicSender: OnRetransmissionTimeout, congestionWindow:", c.congestionWindow)
 }
 
 // OnConnectionMigration is called when the connection is migrated (?)
