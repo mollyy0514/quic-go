@@ -651,7 +651,7 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 			fmt.Println("3")
 			// Handover event prediction
 			// rlf, _ = strconv.ParseFloat(latestRecord[2][8:len(latestRecord[2])-1], 64)
-			rlf, _ = strconv.ParseFloat(latestRecord[2][8:14], 64)
+			rlf, _ = strconv.ParseFloat(latestRecord[2][9:15], 64)
 			// cuurently not using lte_ho & nr_ho prediction
 			// lte_ho, _ := strconv.ParseFloat(latestRecord[3][12:len(latestRecord[3])-1], 64)
 			// nr_ho, _ := strconv.ParseFloat(latestRecord[4][11:len(latestRecord[4])-1], 64)
@@ -668,7 +668,6 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				latestRecordTime = latestRecord[0]
 				fmt.Println(t, "LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 			} else {
-				fmt.Println(t, "LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 				tmpTimeThreshold = timeThreshold
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
