@@ -198,7 +198,6 @@ func (c *cubicSender) OnPacketAcked(
 }
 
 func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber protocol.PacketNumber, lostBytes, priorInFlight protocol.ByteCount) {
-	print(packetNumber, "lostBytes:", lostBytes, "\n")
 	// TCP NewReno (RFC6582) says that once a loss occurs, any losses in packets
 	// already sent should be treated as a single loss event, since it's expected.
 	if packetNumber <= c.largestSentAtLastCutback {
@@ -217,7 +216,7 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 		latestRecordTime = paramList[1]
 		pers = paramList[2]
 	}
-
+	fmt.Println(packetNumber, ho_state)
 	if c.reno {
 		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
 		currentCongestionWindow := c.congestionWindow
