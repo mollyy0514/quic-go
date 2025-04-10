@@ -666,9 +666,9 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 				tmpPacketThreshold = packetThreshold
 				// set parameters
 				latestRecordTime = latestRecord[0]
-				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
+				fmt.Println(t, "LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 			} else {
-				fmt.Println("LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
+				fmt.Println(t, "LATEST RECORD:", latestRecord[0], latestRecord[1], latestRecord[2], latestRecord[3])
 				tmpTimeThreshold = timeThreshold
 				tmpPacketThreshold = packetThreshold
 				latestRecordTime = "none"
