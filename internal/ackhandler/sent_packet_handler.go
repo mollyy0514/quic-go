@@ -643,7 +643,6 @@ func (h *sentPacketHandler) detectLostPackets(dev string, now time.Time, encLeve
 	var latestRecordTime string
 	var rlf float64
 	// Check if the file was empty
-	fmt.Println(latestRecord)
 	if len(latestRecord) > 0 {
 		// Print the last record (row)
 		if len(latestRecord) >= 4 {

@@ -216,7 +216,6 @@ func (c *cubicSender) OnCongestionEvent(param string, ho_state int, packetNumber
 		latestRecordTime = paramList[1]
 		pers = paramList[2]
 	}
-	fmt.Println(packetNumber, ho_state)
 	if c.reno {
 		targetCongestionWindow := protocol.ByteCount(float64(c.congestionWindow) * renoBeta)
 		currentCongestionWindow := c.congestionWindow
